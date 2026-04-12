@@ -1,0 +1,70 @@
+# ───── Git y metadatos del repo ─────
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# ───── Entornos virtuales ─────
+.venv/
+venv/
+env/
+ENV/
+
+# ───── Python caché / build ─────
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
+
+# ───── Testing y cobertura ─────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# ───── Documentación y archivos auxiliares ─────
+*.md
+!README.md
+docs/
+LICENSE
+
+# ───── Streamlit local ─────
+.streamlit/secrets.toml
+
+# ───── Ficheros generados por la app ─────
+tmp/
+cottas_app/
+output/
+*.log
+
+# ───── RDF / COTTAS de prueba sueltos en la raíz ─────
+/*.cottas
+/*.ttl
+/*.nt
+/*.nq
+/*.rdf
+
+# ───── Entorno ─────
+.env
+.env.local
+.envrc
+
+# ───── IDEs y editores ─────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ───── Sistema operativo ─────
+.DS_Store
+Thumbs.db
+desktop.ini

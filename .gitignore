@@ -205,3 +205,39 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ───────────────────────────────────────────────────────────
+# Proyecto COTTAS Manager · añadidos específicos del TFG
+# ───────────────────────────────────────────────────────────
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Ficheros generados por la app en runtime
+tmp/
+cottas_app/
+output/
+
+# RDF / COTTAS de prueba sueltos en la raíz
+# (los de tests/ sí se versionan porque no están en la raíz)
+/*.cottas
+/*.ttl
+/*.nt
+/*.nq
+/*.rdf
+/*.trig
+/*.jsonld
+
+# Editores / IDE (el tutor los tiene comentados)
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos comprimidos sueltos
+*.zip
+*.tar.gz
+*.7z
