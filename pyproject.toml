@@ -1,0 +1,21 @@
+[project]
+name = "cottas-manager"
+version = "1.0.0"
+description = "Aplicación web Streamlit para la gestión de grafos RDF comprimidos en formato COTTAS"
+requires-python = ">=3.11"
+authors = [{name = "TFG COTTAS Manager"}]
+readme = "README.md"
+dependencies = [
+    "streamlit>=1.35.0,<2.0.0",
+    "pycottas>=1.1,<2.0",
+    "pandas>=2.0.0,<3.0.0",
+    "plotly>=5.0.0,<6.0.0",
+    "duckdb>=1.2.0,<2.0.0",
+    "rdflib>=7.0.0,<8.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pdoc>=14.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

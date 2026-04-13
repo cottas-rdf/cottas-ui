@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  cottas-app:
+    build: .
+    image: cottas-manager:latest
+    container_name: cottas_manager
+    ports:
+      - "8501:8501"
+    volumes:
+      - cottas_tmp:/tmp/cottas_app
+    environment:
+      - STREAMLIT_SERVER_MAX_UPLOAD_SIZE=2000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  cottas_tmp:
