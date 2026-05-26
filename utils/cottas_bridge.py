@@ -52,7 +52,7 @@ def _get_metadata_cached(cottas_path: str, _mtime_ns: int, _size_bytes: int) -> 
     _require_pycottas()
     try:
         if not verify_cottas_file(cottas_path):
-            raise COTTASError("El fichero no es un COTTAS válido.")
+            raise COTTASError("The file is not a valid COTTAS file.")
 
         raw = pycottas.info(cottas_path)
         file_size_mb = (
@@ -79,8 +79,8 @@ def _get_metadata_cached(cottas_path: str, _mtime_ns: int, _size_bytes: int) -> 
     except (ValidationError, COTTASError):
         raise
     except Exception as exc:
-        logger.exception("Error al leer metadatos de %s", cottas_path)
-        raise COTTASError(f"Error al leer metadatos: {exc}") from exc
+        logger.exception("Error reading metadata from %s", cottas_path)
+        raise COTTASError(f"Error reading metadata: {exc}") from exc
 
 
 @lru_cache(maxsize=32)
@@ -93,8 +93,8 @@ def _get_sample_triples_cached(cottas_path: str, _mtime_ns: int, _size_bytes: in
         results = doc.search(pattern, limit=limit)
         return _to_dataframe(results)
     except Exception as exc:
-        logger.exception("Error al obtener muestra de %s", cottas_path)
-        raise COTTASError(f"Error al obtener muestra de tripletas: {exc}") from exc
+        logger.exception("Error retrieving sample from %s", cottas_path)
+        raise COTTASError(f"Error retrieving triple sample: {exc}") from exc
 
 
 @lru_cache(maxsize=32)
@@ -110,8 +110,8 @@ def _get_predicate_distribution_cached(cottas_path: str, _mtime_ns: int, _size_b
         )
         return duckdb.execute(query).df()
     except Exception as exc:
-        logger.exception("Error al calcular distribución de predicados de %s", cottas_path)
-        raise COTTASError(f"Error al calcular distribución de predicados: {exc}") from exc
+        logger.exception("Error computing predicate distribution from %s", cottas_path)
+        raise COTTASError(f"Error computing predicate distribution: {exc}") from exc
 
 RDFLIB_SERIALIZATION_FORMATS = {
     "ntriples": "nt",
@@ -133,8 +133,8 @@ class COTTASError(Exception):
 def _require_pycottas() -> None:
     if not PYCOTTAS_AVAILABLE:
         raise COTTASError(
-            "La librería pycottas no está instalada en el entorno activo. "
-            "Instálala con `pip install pycottas` y reinicia la aplicación."
+            "The pycottas library is not installed in the active environment. "
+            "Install it with `pip install pycottas` and restart the application."
         )
 
 
@@ -142,7 +142,7 @@ def _require_pycottas() -> None:
 def _ensure_output_exists(path: str, operation: str) -> None:
     if not os.path.exists(path):
         raise COTTASError(
-            f"La operación {operation} terminó sin generar el fichero esperado: {path}"
+            f"Operation {operation} finished without producing the expected file: {path}"
         )
 
 
@@ -157,8 +157,8 @@ def verify_cottas_file(cottas_path: str) -> bool:
     try:
         return bool(pycottas.verify(cottas_path))
     except Exception as exc:  # pragma: no cover - defensive
-        logger.exception("Error verificando fichero COTTAS: %s", cottas_path)
-        raise COTTASError(f"No se pudo verificar el fichero COTTAS: {exc}") from exc
+        logger.exception("Error verifying COTTAS file: %s", cottas_path)
+        raise COTTASError(f"Could not verify COTTAS file: {exc}") from exc
 
 
 
@@ -183,8 +183,8 @@ def compress_rdf(
     except COTTASError:
         raise
     except Exception as exc:
-        logger.exception("Error al comprimir %s", input_path)
-        raise COTTASError(f"Error durante la compresión: {exc}") from exc
+        logger.exception("Error compressing %s", input_path)
+        raise COTTASError(f"Error during compression: {exc}") from exc
 
 
 
@@ -225,13 +225,13 @@ def decompress_cottas(
 
         if is_quad and output_format == "ntriples":
             raise COTTASError(
-                "El fichero contiene named graphs. N-Triples no puede representar quads; "
-                "usa N-Quads o TriG."
+                "The file contains named graphs. N-Triples cannot represent quads; "
+                "use N-Quads or TriG."
             )
         if is_quad and not format_supports_named_graphs(output_format) and output_format != "ntriples":
             raise COTTASError(
-                "El fichero contiene named graphs. El formato elegido no preserva grafos nombrados; "
-                "usa N-Quads o TriG."
+                "The file contains named graphs. The chosen format does not preserve named graphs; "
+                "use N-Quads or TriG."
             )
 
         with tempfile.NamedTemporaryFile(suffix=".nq", delete=False) as tmp:
@@ -260,8 +260,8 @@ def decompress_cottas(
     except (ValidationError, COTTASError):
         raise
     except Exception as exc:
-        logger.exception("Error al descomprimir %s", input_path)
-        raise COTTASError(f"Error durante la descompresión: {exc}") from exc
+        logger.exception("Error decompressing %s", input_path)
+        raise COTTASError(f"Error during decompression: {exc}") from exc
 
 
 
@@ -304,7 +304,7 @@ def get_search_sql(
     try:
         meta = get_metadata(cottas_path)
         if graph and not meta["is_quad_table"]:
-            raise COTTASError("Este fichero no es un quad table; no puedes filtrar por grafo.")
+            raise COTTASError("This file is not a quad table; you cannot filter by graph.")
         pattern = (
             build_triple_pattern(subject, predicate, obj, graph)
             if meta["is_quad_table"]
@@ -312,7 +312,7 @@ def get_search_sql(
         )
         return pycottas.translate_triple_pattern(cottas_path, pattern, limit=limit, offset=offset)
     except Exception as exc:
-        raise COTTASError(f"No se pudo generar el SQL del patrón: {exc}") from exc
+        raise COTTASError(f"Could not generate SQL for the pattern: {exc}") from exc
 
 
 
@@ -329,7 +329,7 @@ def search_triple_pattern(
     try:
         meta = get_metadata(cottas_path)
         if graph and not meta["is_quad_table"]:
-            raise COTTASError("Este fichero no es un quad table; no puedes filtrar por grafo.")
+            raise COTTASError("This file is not a quad table; you cannot filter by graph.")
         pattern = (
             build_triple_pattern(
                 subject=subject,
@@ -350,8 +350,8 @@ def search_triple_pattern(
     except (ValidationError, COTTASError):
         raise
     except Exception as exc:
-        logger.exception("Error al evaluar patrón sobre %s", cottas_path)
-        raise COTTASError(f"Error al evaluar el patrón de tripleta: {exc}") from exc
+        logger.exception("Error evaluating pattern on %s", cottas_path)
+        raise COTTASError(f"Error evaluating triple pattern: {exc}") from exc
 
 
 
@@ -365,8 +365,8 @@ def run_sparql_select(cottas_path: str, query: str) -> pd.DataFrame:
         rows = [["" if value is None else str(value) for value in row] for row in results]
         return pd.DataFrame(rows, columns=columns)
     except Exception as exc:
-        logger.exception("Error al ejecutar SPARQL sobre %s", cottas_path)
-        raise COTTASError(f"Error al ejecutar la consulta SPARQL: {exc}") from exc
+        logger.exception("Error running SPARQL query on %s", cottas_path)
+        raise COTTASError(f"Error running SPARQL query: {exc}") from exc
 
 
 
@@ -380,8 +380,8 @@ def diff_cottas_files(path_a: str, path_b: str, output_path: str, index: str = "
     except COTTASError:
         raise
     except Exception as exc:
-        logger.exception("Error calculando diff entre %s y %s", path_a, path_b)
-        raise COTTASError(f"Error al calcular la diferencia: {exc}") from exc
+        logger.exception("Error computing diff between %s and %s", path_a, path_b)
+        raise COTTASError(f"Error computing difference: {exc}") from exc
 
 
 
@@ -395,8 +395,8 @@ def merge_cottas_files(paths: list[str], output_path: str, index: str = "SPO") -
     except COTTASError:
         raise
     except Exception as exc:
-        logger.exception("Error fusionando ficheros COTTAS: %s", paths)
-        raise COTTASError(f"Error al fusionar ficheros: {exc}") from exc
+        logger.exception("Error merging COTTAS files: %s", paths)
+        raise COTTASError(f"Error merging files: {exc}") from exc
 
 
 

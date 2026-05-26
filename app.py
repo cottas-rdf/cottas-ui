@@ -1,16 +1,16 @@
 """
 app.py — COTTAS Manager
-Punto de entrada Streamlit con navegación por sidebar.
+Streamlit entry point with sidebar navigation.
 
-Las vistas están en views/ (no en pages/) para usar enrutamiento manual.
-Streamlit reserva pages/ para multi-página nativa, que ejecuta cada archivo
-directamente y deja páginas en blanco si solo definen render().
+Views live in views/ (not pages/) to use manual routing.
+Streamlit reserves pages/ for native multi-page mode, which executes each file
+directly and leaves blank pages when they only define render().
 """
 
 import streamlit as st
 from utils.file_manager import init_session_dir
 
-# ─── Configuración ────────────────────────────────────────────────────────────
+# ─── Configuration ────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="COTTAS Manager",
     page_icon=":material/database:",
@@ -18,12 +18,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ─── CSS global ───────────────────────────────────────────────────────────────
+# ─── Global CSS ───────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Tipografía base */
+/* Base typography */
 html, body, [class*="css"], [data-testid="stAppViewContainer"] {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -32,10 +32,10 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
 h1, h2, h3, h4 { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
 code, pre, kbd { font-family: 'JetBrains Mono', monospace; }
 
-/* Ocultar menú y footer de Streamlit */
+/* Hide Streamlit menu and footer */
 #MainMenu, footer, header { visibility: hidden; }
 
-/* Fondo de la app */
+/* App background */
 [data-testid="stAppViewContainer"] {
     background: #0B0F1A;
 }
@@ -58,7 +58,7 @@ code, pre, kbd { font-family: 'JetBrains Mono', monospace; }
 [data-testid="stMetricLabel"] { color: #94A3B8 !important; font-weight: 500; }
 [data-testid="stMetricValue"] { color: #F1F5F9 !important; font-weight: 600; }
 
-/* Botones primarios */
+/* Primary buttons */
 .stButton > button[kind="primary"] {
     background: #3B82F6;
     border: 1px solid #3B82F6;
@@ -96,7 +96,7 @@ code {
     font-size: 0.88em;
 }
 
-/* DataFrames y Expanders */
+/* DataFrames and expanders */
 [data-testid="stDataFrame"] {
     border: 1px solid #1F2937;
     border-radius: 10px;
@@ -149,10 +149,10 @@ code {
     color: #F1F5F9 !important;
 }
 
-/* Separadores */
+/* Dividers */
 hr { border: none; border-top: 1px solid #1F2937; margin: 1.75rem 0; }
 
-/* Info box reutilizable */
+/* Reusable info box */
 .info-box {
     background: #111827;
     border: 1px solid #1F2937;
@@ -166,19 +166,19 @@ hr { border: none; border-top: 1px solid #1F2937; margin: 1.75rem 0; }
 .info-box.muted { border-left-color: #334155; color: #64748B; }
 .info-box b { color: #F1F5F9; font-weight: 600; }
 
-/* Alertas nativas (st.success, st.error) */
+/* Native alerts (st.success, st.error) */
 [data-testid="stAlert"] {
     border-radius: 10px;
     border: 1px solid #1F2937;
 }
 
-/* Labels de todos los widgets */
+/* All widget labels */
 [data-testid="stWidgetLabel"] {
     padding: 0 2px 6px 2px;
     color: #CBD5E1 !important;
 }
 
-/* Inputs y selects: respiración interna */
+/* Inputs and selects: inner padding */
 [data-baseweb="input"] input,
 [data-baseweb="select"] > div,
 .stTextInput > div > div > input,
@@ -187,22 +187,22 @@ hr { border: none; border-top: 1px solid #1F2937; margin: 1.75rem 0; }
     padding-right: 14px !important;
 }
 
-/* Alinear verticalmente el contenido de columnas con gráficos */
+/* Vertically align column content with charts */
 [data-testid="stHorizontalBlock"] {
     align-items: center;
 }
 
 
-/* ─── Tamaños de fuente específicos (legibilidad) ─────────────────── */
+/* ─── Font sizes (readability) ────────────────────────────────────── */
 
-/* Párrafos y listas en el área principal */
+/* Paragraphs and lists in the main area */
 [data-testid="stMain"] [data-testid="stMarkdownContainer"] p,
 [data-testid="stMain"] [data-testid="stMarkdownContainer"] li {
     font-size: 1rem;
     line-height: 1.6;
 }
 
-/* Info-box propio */
+/* Custom info-box */
 .info-box {
     font-size: 0.98rem !important;
 }
@@ -210,7 +210,7 @@ hr { border: none; border-top: 1px solid #1F2937; margin: 1.75rem 0; }
     font-size: inherit !important;
 }
 
-/* Captions y texto secundario (el pequeño gris bajo sliders, etc.) */
+/* Captions and secondary text (small grey under sliders, etc.) */
 [data-testid="stCaptionContainer"] p,
 [data-testid="stCaptionContainer"],
 .stCaption,
@@ -222,30 +222,30 @@ hr { border: none; border-top: 1px solid #1F2937; margin: 1.75rem 0; }
 /* DataFrames */
 [data-testid="stDataFrame"] { font-size: 0.96rem; }
 
-/* Alertas nativas (success, error, warning, info) */
+/* Native alerts (success, error, warning, info) */
 [data-testid="stAlert"] p {
     font-size: 1rem !important;
     line-height: 1.55 !important;
 }
 
-/* Valores y labels de st.metric */
+/* st.metric values and labels */
 [data-testid="stMetricValue"] { font-size: 1.7rem !important; }
 [data-testid="stMetricLabel"] p { font-size: 0.9rem !important; }
 
-/* Botones: fuente y padding cómodos */
+/* Buttons: comfortable font and padding */
 .stButton > button {
     font-size: 1rem !important;
     font-weight: 500;
 }
 
-/* Labels de widgets */
+/* Widget labels */
 [data-testid="stWidgetLabel"] p {
     font-size: 1rem !important;
     font-weight: 500 !important;
     margin-bottom: 6px !important;
 }
 
-/* Texto dentro de inputs y selects */
+/* Text inside inputs and selects */
 [data-baseweb="input"] input,
 [data-baseweb="select"] > div,
 .stTextInput input,
@@ -254,20 +254,20 @@ textarea {
     font-size: 0.98rem !important;
 }
 
-/* Tabs principales */
+/* Main tabs */
 .stTabs [data-baseweb="tab"] p,
 .stTabs [data-baseweb="tab"] {
     font-size: 1rem !important;
 }
 
-/* Sidebar: navegación radio */
+/* Sidebar: navigation radio */
 [data-testid="stSidebar"] .stRadio label p {
     font-size: 1rem !important;
     font-weight: 500;
     color: #94A3B8;
 }
 
-/* Sidebar: info-box dentro */
+/* Sidebar: inner info-box */
 [data-testid="stSidebar"] .info-box {
     font-size: 0.92rem !important;
 }
@@ -278,7 +278,7 @@ textarea {
     font-size: 1rem !important;
 }
 
-/* Texto dentro de expanders */
+/* Text inside expanders */
 [data-testid="stExpander"] [data-testid="stMarkdownContainer"] p,
 [data-testid="stExpander"] [data-testid="stMarkdownContainer"] li {
     font-size: 0.98rem;
@@ -287,7 +287,7 @@ textarea {
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Estado de sesión ─────────────────────────────────────────────────────────
+# ─── Session state ────────────────────────────────────────────────────────────
 init_session_dir()
 for k, v in {
     "active_cottas":   None,
@@ -301,14 +301,14 @@ for k, v in {
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 PAGES = {
-    "Inicio":                  ("home",       ":material/home:"),
-    "Comprimir":               ("compress",   ":material/compress:"),
-    "Descomprimir":            ("decompress", ":material/unarchive:"),
-    "Explorar":                ("explore",    ":material/travel_explore:"),
-    "Buscar tripletas":        ("search",     ":material/manage_search:"),
-    "Consulta SPARQL":         ("sparql",     ":material/terminal:"),
-    "Diferencia":              ("diff",       ":material/compare:"),
-    "Fusión":                  ("merge",      ":material/merge:"),
+    "Home":                    ("home",       ":material/home:"),
+    "Compress":                ("compress",   ":material/compress:"),
+    "Decompress":              ("decompress", ":material/unarchive:"),
+    "Explore":                 ("explore",    ":material/travel_explore:"),
+    "Triple Search":           ("search",     ":material/manage_search:"),
+    "SPARQL Query":            ("sparql",     ":material/terminal:"),
+    "Difference":              ("diff",       ":material/compare:"),
+    "Merge":                   ("merge",      ":material/merge:"),
 }
 
 with st.sidebar:
@@ -320,7 +320,7 @@ with st.sidebar:
           </div>
           <div style='color:#64748B;font-size:0.75rem;margin-top:3px;
                       text-transform:uppercase;letter-spacing:0.08em;font-weight:500;'>
-            Compresión · Consulta · Análisis
+            Compression · Query · Analysis
           </div>
         </div>
     """, unsafe_allow_html=True)
@@ -329,7 +329,7 @@ with st.sidebar:
 
     labels = list(PAGES.keys())
     selected_label = st.radio(
-        "Navegación",
+        "Navigation",
         labels,
         format_func=lambda label: f"{PAGES[label][1]}  {label}",
         label_visibility="collapsed",
@@ -340,14 +340,14 @@ with st.sidebar:
 
     if st.session_state["active_cottas"]:
         st.markdown(
-            f"<div class='info-box'><b>Fichero activo</b><br>"
+            f"<div class='info-box'><b>Active file</b><br>"
             f"<code style='font-size:.78rem'>{st.session_state['active_name']}</code></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            "<div class='info-box muted'>Sin fichero COTTAS cargado. "
-            "Carga uno desde <b>Comprimir</b> o <b>Descomprimir</b>.</div>",
+            "<div class='info-box muted'>No COTTAS file loaded. "
+            "Load one from <b>Compress</b> or <b>Decompress</b>.</div>",
             unsafe_allow_html=True,
         )
 
@@ -357,7 +357,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-# ─── Enrutamiento ─────────────────────────────────────────────────────────────
+# ─── Routing ──────────────────────────────────────────────────────────────────
 if   page == "home":       from views.home       import render
 elif page == "compress":   from views.compress   import render
 elif page == "decompress": from views.decompress import render
@@ -367,6 +367,6 @@ elif page == "sparql":     from views.sparql     import render
 elif page == "diff":       from views.diff       import render
 elif page == "merge":      from views.merge      import render
 else:
-    def render(): st.error("Página no encontrada.")
+    def render(): st.error("Page not found.")
 
 render()

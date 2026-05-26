@@ -1,6 +1,6 @@
 """
 stats.py
-Cálculo y representación de estadísticas de compresión de ficheros COTTAS.
+Computation and visualization of compression statistics for COTTAS files.
 """
 
 from __future__ import annotations
@@ -12,29 +12,29 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-# Factores de estimación empíricos basados en los resultados del paper COTTAS
-# (Arenas-Guerrero & Ferrada, 2025, Tabla 2)
-_ACR_COTTAS_AVG = 0.041     # 4.1 % sobre N-Triples (WDBench, mejor índice ~SPO)
-_ACR_HDT_AVG    = 0.086     # 8.6 % sobre N-Triples (WDBench)
-_BYTES_PER_TRIPLE_NT = 100  # estimación media de bytes por tripleta en N-Triples
+# Empirical estimation factors based on the COTTAS paper results
+# (Arenas-Guerrero & Ferrada, 2025, Table 2)
+_ACR_COTTAS_AVG = 0.041     # 4.1 % over N-Triples (WDBench, best index ~SPO)
+_ACR_HDT_AVG    = 0.086     # 8.6 % over N-Triples (WDBench)
+_BYTES_PER_TRIPLE_NT = 100  # average bytes per triple in N-Triples
 
 
 def estimate_nt_size_mb(num_triples: Optional[int]) -> Optional[float]:
-    """Estima el tamaño en MB del equivalente N-Triples."""
+    """Estimates the size in MB of the equivalent N-Triples."""
     if num_triples is None:
         return None
     return (num_triples * _BYTES_PER_TRIPLE_NT) / (1024 ** 2)
 
 
 def compression_ratio(cottas_size_mb: float, nt_size_mb: float) -> float:
-    """ACR = tamaño_cottas / tamaño_nt."""
+    """ACR = cottas_size / nt_size."""
     if nt_size_mb == 0:
         return 0.0
     return cottas_size_mb / nt_size_mb
 
 
 def estimate_hdt_size_mb(nt_size_mb: float) -> float:
-    """Estima el tamaño HDT a partir del tamaño N-Triples."""
+    """Estimate the HDT size from the N-Triples size."""
     return nt_size_mb * _ACR_HDT_AVG
 
 
@@ -44,17 +44,17 @@ def build_size_comparison_chart(
     hdt_size_mb: Optional[float],
 ) -> go.Figure:
     """
-    Gráfico de barras comparando tamaños: N-Triples, HDT y COTTAS.
+    Bar chart comparing sizes: N-Triples, HDT and COTTAS.
     """
     labels, sizes, colors = [], [], []
 
     if nt_size_mb:
-        labels.append("N-Triples (estimado)")
+        labels.append("N-Triples (estimated)")
         sizes.append(nt_size_mb)
         colors.append("#64748B")
 
     if hdt_size_mb:
-        labels.append("HDT (estimado)")
+        labels.append("HDT (estimated)")
         sizes.append(hdt_size_mb)
         colors.append("#F59E0B")
 
@@ -72,8 +72,8 @@ def build_size_comparison_chart(
         )
     )
     fig.update_layout(
-        title="Comparativa de tamaño de fichero",
-        yaxis_title="Tamaño (MB)",
+        title="File size comparison",
+        yaxis_title="Size (MB)",
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font_color="#F1F5F9",
@@ -87,11 +87,11 @@ def build_size_comparison_chart(
 
 def build_predicate_bar_chart(df: pd.DataFrame) -> go.Figure:
     """
-    Gráfico de barras horizontales con la distribución de predicados.
+    Horizontal bar chart with the distribution of predicates.
     """
     if df.empty:
         fig = go.Figure()
-        fig.add_annotation(text="Sin datos", showarrow=False)
+        fig.add_annotation(text="No data available", showarrow=False)
         return fig
 
     fig = px.bar(
@@ -101,10 +101,10 @@ def build_predicate_bar_chart(df: pd.DataFrame) -> go.Figure:
         orientation="h",
         color="count",
         color_continuous_scale=["#1E3A5F", "#2563EB", "#60A5FA"],
-        labels={"count": "Frecuencia", "predicate": "Predicado"},
+        labels={"count": "Frequency", "predicate": "Predicate"},
     )
     fig.update_layout(
-        title="Distribución de predicados (top-N)",
+        title="Predicate distribution (top-N)",
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font_color="#F1F5F9",
@@ -118,7 +118,7 @@ def build_predicate_bar_chart(df: pd.DataFrame) -> go.Figure:
 
 
 def acr_gauge(acr_pct: float) -> go.Figure:
-    """Indicador tipo gauge para el ratio de compresión ACR."""
+    """Gauge-style indicator for the ACR compression ratio."""
     fig = go.Figure(
         go.Indicator(
             mode="gauge+number",
