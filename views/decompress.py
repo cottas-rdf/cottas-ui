@@ -70,7 +70,7 @@ def render() -> None:
                           value=os.path.splitext(cottas_name or "output")[0]),
             fallback="output",
         )
-        disable_button = bool(meta["is_quad_table"] and fmt_id == "ntriples")
+        disable_button = bool(meta["is_quad_table"] and not format_supports_named_graphs(fmt_id))
         submitted = st.form_submit_button("Decompress", type="primary",
                                            use_container_width=True, disabled=disable_button)
 

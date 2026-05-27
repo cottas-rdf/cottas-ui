@@ -1,4 +1,4 @@
-"""Tests de integración para flujos completos: compress→search→sparql→diff→merge."""
+"""Integration tests for complete compress-search-SPARQL-diff-merge flows."""
 import os, pytest
 pytest.importorskip("pycottas")
 from utils import cottas_bridge as cb

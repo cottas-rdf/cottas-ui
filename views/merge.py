@@ -34,6 +34,7 @@ def render() -> None:
         return
 
     st.divider()
+    st.caption("Merge computes an RDF graph union. Duplicate triples are kept only once.")
     with st.form("merge_form"):
         index = st.selectbox("Result index", ["SPO","SOP","PSO","POS","OSP","OPS"], index=0,
                               help="The result is materialized with the specified index.")
@@ -123,7 +124,8 @@ def _show_panel(result_path, result_name):
         is_valid = st.session_state.get("merge_preview_valid")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Valid", "Yes" if is_valid else "No")
-        c2.metric("Triples", f"{meta['num_triples']:,}" if meta.get("num_triples") else "N/A")
+        num_triples = meta.get("num_triples")
+        c2.metric("Triples", f"{num_triples:,}" if num_triples is not None else "N/A")
         c3.metric("Index", meta.get("index", "N/A"))
         c4.metric("Type", "Quad table" if meta.get("is_quad_table") else "Triple table")
         if sample_df is None or sample_df.empty:

@@ -1,7 +1,7 @@
 [project]
 name = "cottas-manager"
 version = "1.0.0"
-description = "Aplicación web Streamlit para la gestión de grafos RDF comprimidos en formato COTTAS"
+description = "Streamlit web application for managing RDF graphs compressed in COTTAS format"
 requires-python = ">=3.11"
 authors = [{name = "TFG COTTAS Manager"}]
 readme = "README.md"

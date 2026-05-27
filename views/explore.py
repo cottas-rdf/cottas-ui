@@ -46,15 +46,17 @@ def render() -> None:
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Valid", "Yes" if is_valid else "No")
-    c2.metric("Triples", f"{meta['num_triples']:,}" if meta.get("num_triples") else "N/A")
+    num_triples = meta.get("num_triples")
+    c2.metric("Triples", f"{num_triples:,}" if num_triples is not None else "N/A")
     c3.metric("Index", meta.get("index", "N/A"))
-    c4.metric("Properties", f"{meta['num_properties']:,}" if meta.get("num_properties") else "N/A")
+    c4.metric("Properties", f"{meta['num_properties']:,}" if meta.get("num_properties") is not None else "N/A")
     c5.metric("Type", "Quad table" if meta.get("is_quad_table") else "Triple table")
 
     c6, c7, c8, c9 = st.columns(4)
-    c6.metric("Distinct subjects", f"{meta['num_distinct_subjects']:,}" if meta.get("num_distinct_subjects") else "N/A")
-    c7.metric("Distinct objects", f"{meta['num_distinct_objects']:,}" if meta.get("num_distinct_objects") else "N/A")
-    c8.metric("Row groups", f"{meta['num_triples_groups']:,}" if meta.get("num_triples_groups") else "N/A")
+    c6.metric("Distinct subjects", f"{meta['num_distinct_subjects']:,}" if meta.get("num_distinct_subjects") is not None else "N/A")
+    c7.metric("Distinct objects", f"{meta['num_distinct_objects']:,}" if meta.get("num_distinct_objects") is not None else "N/A")
+    num_groups = meta.get("num_triples_groups")
+    c8.metric("Row groups", f"{num_groups:,}" if num_groups is not None else "N/A")
     c9.metric("Compression", meta.get("compression", "N/A"))
 
     if meta.get("issued") or meta.get("custom_metadata"):

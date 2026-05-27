@@ -1,8 +1,7 @@
 """Typed bridge between the Streamlit UI and pycottas 1.1.x.
 
-The original project used speculative API names. This bridge is aligned with the
-current documented API of pycottas and centralises format conversions,
-validation, metadata access and query helpers.
+The bridge centralises format conversions, validation, metadata access and query
+helpers so the Streamlit views do not depend directly on the pycottas API.
 """
 
 from __future__ import annotations
@@ -37,81 +36,11 @@ except ImportError:  # pragma: no cover - exercised in environments without pyco
     PYCOTTAS_AVAILABLE = False
 
 
-PYCOTTAS_VERSION = metadata.version("pycottas") if PYCOTTAS_AVAILABLE else None
+try:
+    PYCOTTAS_VERSION = metadata.version("pycottas") if PYCOTTAS_AVAILABLE else None
+except metadata.PackageNotFoundError:  # pragma: no cover - relevant for mocked tests
+    PYCOTTAS_VERSION = None
 
-
-def _file_cache_token(path: str) -> tuple[str, int, int]:
-    if not os.path.exists(path):
-        return os.path.abspath(path), 0, 0
-    stat = os.stat(path)
-    return os.path.abspath(path), int(stat.st_mtime_ns), int(stat.st_size)
-
-
-@lru_cache(maxsize=64)
-def _get_metadata_cached(cottas_path: str, _mtime_ns: int, _size_bytes: int) -> dict:
-    _require_pycottas()
-    try:
-        if not verify_cottas_file(cottas_path):
-            raise COTTASError("The file is not a valid COTTAS file.")
-
-        raw = pycottas.info(cottas_path)
-        file_size_mb = (
-            os.path.getsize(cottas_path) / (1024 ** 2)
-            if os.path.exists(cottas_path)
-            else raw.get("size (MB)")
-        )
-        meta = {
-            "num_triples": raw.get("triples"),
-            "index": str(raw.get("index", "N/A")).upper(),
-            "num_properties": raw.get("properties"),
-            "num_distinct_subjects": raw.get("distinct_subjects"),
-            "num_distinct_objects": raw.get("distinct_objects"),
-            "num_triples_groups": raw.get("triples_groups"),
-            "compression": raw.get("compression"),
-            "issued": raw.get("issued"),
-            "file_size_mb": file_size_mb,
-            "is_quad_table": bool(raw.get("quads", False)),
-            "custom_metadata": {
-                "duckdb_reported_size_mb_decimal": raw.get("size (MB)"),
-            },
-        }
-        return meta
-    except (ValidationError, COTTASError):
-        raise
-    except Exception as exc:
-        logger.exception("Error reading metadata from %s", cottas_path)
-        raise COTTASError(f"Error reading metadata: {exc}") from exc
-
-
-@lru_cache(maxsize=32)
-def _get_sample_triples_cached(cottas_path: str, _mtime_ns: int, _size_bytes: int, limit: int) -> pd.DataFrame:
-    _require_pycottas()
-    try:
-        doc = pycottas.COTTASDocument(cottas_path)
-        meta = _get_metadata_cached(cottas_path, _mtime_ns, _size_bytes)
-        pattern = build_triple_pattern(None, None, None, None) if meta["is_quad_table"] else build_triple_pattern(None, None, None)
-        results = doc.search(pattern, limit=limit)
-        return _to_dataframe(results)
-    except Exception as exc:
-        logger.exception("Error retrieving sample from %s", cottas_path)
-        raise COTTASError(f"Error retrieving triple sample: {exc}") from exc
-
-
-@lru_cache(maxsize=32)
-def _get_predicate_distribution_cached(cottas_path: str, _mtime_ns: int, _size_bytes: int, top_n: int) -> pd.DataFrame:
-    _require_pycottas()
-    try:
-        escaped = _escape_path(cottas_path)
-        query = (
-            "SELECT p AS predicate, COUNT(*) AS count "
-            f"FROM PARQUET_SCAN('{escaped}') "
-            "GROUP BY p ORDER BY count DESC, predicate ASC "
-            f"LIMIT {int(top_n)}"
-        )
-        return duckdb.execute(query).df()
-    except Exception as exc:
-        logger.exception("Error computing predicate distribution from %s", cottas_path)
-        raise COTTASError(f"Error computing predicate distribution: {exc}") from exc
 
 RDFLIB_SERIALIZATION_FORMATS = {
     "ntriples": "nt",
@@ -129,14 +58,12 @@ class COTTASError(Exception):
     """Generic bridge exception shown in the UI."""
 
 
-
 def _require_pycottas() -> None:
     if not PYCOTTAS_AVAILABLE:
         raise COTTASError(
             "The pycottas library is not installed in the active environment. "
             "Install it with `pip install pycottas` and restart the application."
         )
-
 
 
 def _ensure_output_exists(path: str, operation: str) -> None:
@@ -146,10 +73,156 @@ def _ensure_output_exists(path: str, operation: str) -> None:
         )
 
 
-
 def _escape_path(path: str) -> str:
     return path.replace("'", "''")
 
+
+def _file_cache_token(path: str) -> tuple[str, int, int]:
+    if not os.path.exists(path):
+        return os.path.abspath(path), 0, 0
+    stat = os.stat(path)
+    return os.path.abspath(path), int(stat.st_mtime_ns), int(stat.st_size)
+
+
+def _empty_triples_dataframe(is_quad: bool = False) -> pd.DataFrame:
+    """Returns an empty result table with the expected RDF columns."""
+    columns = ["subject", "predicate", "object", "graph"] if is_quad else ["subject", "predicate", "object"]
+    return pd.DataFrame(columns=columns)
+
+
+def _metadata_from_parquet(cottas_path: str) -> dict:
+    """Best-effort metadata fallback for valid COTTAS files.
+
+    Some pycottas versions may fail while reading metadata from an empty COTTAS
+    file produced by a set difference. DuckDB can still inspect the underlying
+    Parquet file, so this fallback keeps the UI usable for empty but valid
+    results.
+    """
+    escaped = _escape_path(cottas_path)
+    describe_df = duckdb.execute(
+        f"DESCRIBE SELECT * FROM PARQUET_SCAN('{escaped}')"
+    ).df()
+    columns = set(describe_df["column_name"].astype(str)) if "column_name" in describe_df else set()
+    is_quad = "g" in columns
+
+    count_row = duckdb.execute(
+        f"SELECT COUNT(*) AS triple_count FROM PARQUET_SCAN('{escaped}')"
+    ).fetchone()
+    num_triples = int(count_row[0]) if count_row and count_row[0] is not None else 0
+
+    def _count_distinct(column: str) -> Optional[int]:
+        if column not in columns or num_triples == 0:
+            return 0 if column in columns else None
+        row = duckdb.execute(
+            f"SELECT COUNT(DISTINCT {column}) FROM PARQUET_SCAN('{escaped}')"
+        ).fetchone()
+        return int(row[0]) if row and row[0] is not None else None
+
+    file_size_mb = os.path.getsize(cottas_path) / (1024 ** 2) if os.path.exists(cottas_path) else None
+    return {
+        "triples": num_triples,
+        "index": "N/A",
+        "properties": _count_distinct("p"),
+        "distinct_subjects": _count_distinct("s"),
+        "distinct_objects": _count_distinct("o"),
+        "triples_groups": None,
+        "compression": None,
+        "issued": None,
+        "size (MB)": file_size_mb,
+        "quads": is_quad,
+        "metadata_source": "duckdb.parquet_scan",
+    }
+
+
+def _normalize_metadata(cottas_path: str, raw: dict, metadata_source: str) -> dict:
+    file_size_mb = (
+        os.path.getsize(cottas_path) / (1024 ** 2)
+        if os.path.exists(cottas_path)
+        else raw.get("size (MB)")
+    )
+    return {
+        "num_triples": raw.get("triples"),
+        "index": str(raw.get("index", "N/A")).upper(),
+        "num_properties": raw.get("properties"),
+        "num_distinct_subjects": raw.get("distinct_subjects"),
+        "num_distinct_objects": raw.get("distinct_objects"),
+        "num_triples_groups": raw.get("triples_groups"),
+        "compression": raw.get("compression"),
+        "issued": raw.get("issued"),
+        "file_size_mb": file_size_mb,
+        "is_quad_table": bool(raw.get("quads", False)),
+        "custom_metadata": {
+            "duckdb_reported_size_mb_decimal": raw.get("size (MB)"),
+            "metadata_source": metadata_source,
+        },
+    }
+
+
+@lru_cache(maxsize=64)
+def _get_metadata_cached(cottas_path: str, _mtime_ns: int, _size_bytes: int) -> dict:
+    _require_pycottas()
+    try:
+        if not verify_cottas_file(cottas_path):
+            raise COTTASError("The file is not a valid COTTAS file.")
+
+        metadata_source = "pycottas.info"
+        try:
+            raw = pycottas.info(cottas_path)
+            if not isinstance(raw, dict):
+                raise TypeError(f"pycottas.info returned {type(raw).__name__}")
+        except Exception as info_exc:
+            logger.warning(
+                "pycottas.info failed for %s; using DuckDB metadata fallback: %s",
+                cottas_path,
+                info_exc,
+            )
+            raw = _metadata_from_parquet(cottas_path)
+            metadata_source = raw.get("metadata_source", "duckdb.parquet_scan")
+
+        return _normalize_metadata(cottas_path, raw, metadata_source)
+    except (ValidationError, COTTASError):
+        raise
+    except Exception as exc:
+        logger.exception("Error reading metadata from %s", cottas_path)
+        raise COTTASError(f"Error reading metadata: {exc}") from exc
+
+
+@lru_cache(maxsize=32)
+def _get_sample_triples_cached(cottas_path: str, _mtime_ns: int, _size_bytes: int, limit: int) -> pd.DataFrame:
+    _require_pycottas()
+    try:
+        meta = _get_metadata_cached(cottas_path, _mtime_ns, _size_bytes)
+        if meta.get("num_triples") == 0:
+            return _empty_triples_dataframe(meta["is_quad_table"])
+
+        doc = pycottas.COTTASDocument(cottas_path)
+        pattern = build_triple_pattern(None, None, None, None) if meta["is_quad_table"] else build_triple_pattern(None, None, None)
+        results = doc.search(pattern, limit=limit)
+        return _to_dataframe(results)
+    except Exception as exc:
+        logger.exception("Error retrieving sample from %s", cottas_path)
+        raise COTTASError(f"Error retrieving triple sample: {exc}") from exc
+
+
+@lru_cache(maxsize=32)
+def _get_predicate_distribution_cached(cottas_path: str, _mtime_ns: int, _size_bytes: int, top_n: int) -> pd.DataFrame:
+    _require_pycottas()
+    try:
+        meta = _get_metadata_cached(cottas_path, _mtime_ns, _size_bytes)
+        if meta.get("num_triples") == 0:
+            return pd.DataFrame(columns=["predicate", "count"])
+
+        escaped = _escape_path(cottas_path)
+        query = (
+            "SELECT p AS predicate, COUNT(*) AS count "
+            f"FROM PARQUET_SCAN('{escaped}') "
+            "GROUP BY p ORDER BY count DESC, predicate ASC "
+            f"LIMIT {int(top_n)}"
+        )
+        return duckdb.execute(query).df()
+    except Exception as exc:
+        logger.exception("Error computing predicate distribution from %s", cottas_path)
+        raise COTTASError(f"Error computing predicate distribution: {exc}") from exc
 
 
 def verify_cottas_file(cottas_path: str) -> bool:
@@ -159,7 +232,6 @@ def verify_cottas_file(cottas_path: str) -> bool:
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Error verifying COTTAS file: %s", cottas_path)
         raise COTTASError(f"Could not verify COTTAS file: {exc}") from exc
-
 
 
 def compress_rdf(
@@ -187,7 +259,6 @@ def compress_rdf(
         raise COTTASError(f"Error during compression: {exc}") from exc
 
 
-
 def _serialize_with_rdflib(
     source_path: str,
     output_path: str,
@@ -206,7 +277,6 @@ def _serialize_with_rdflib(
     graph.serialize(destination=output_path, format=rdflib_format)
 
 
-
 def decompress_cottas(
     input_path: str,
     output_path: str,
@@ -223,16 +293,19 @@ def decompress_cottas(
         metadata_dict = get_metadata(input_path)
         is_quad = bool(metadata_dict["is_quad_table"])
 
-        if is_quad and output_format == "ntriples":
-            raise COTTASError(
-                "The file contains named graphs. N-Triples cannot represent quads; "
-                "use N-Quads or TriG."
-            )
-        if is_quad and not format_supports_named_graphs(output_format) and output_format != "ntriples":
+        if is_quad and not format_supports_named_graphs(output_format):
             raise COTTASError(
                 "The file contains named graphs. The chosen format does not preserve named graphs; "
                 "use N-Quads or TriG."
             )
+
+        if metadata_dict.get("num_triples") == 0:
+            if output_format in {"ntriples", "nquads"}:
+                open(output_path, "w", encoding="utf-8").close()
+            else:
+                graph = rdflib.Dataset() if is_quad else rdflib.Graph()
+                graph.serialize(destination=output_path, format=RDFLIB_SERIALIZATION_FORMATS[output_format])
+            return
 
         with tempfile.NamedTemporaryFile(suffix=".nq", delete=False) as tmp:
             temp_rdf_path = tmp.name
@@ -264,19 +337,9 @@ def decompress_cottas(
         raise COTTASError(f"Error during decompression: {exc}") from exc
 
 
-
 def get_metadata(cottas_path: str) -> dict:
     token = _file_cache_token(cottas_path)
     return _get_metadata_cached(*token).copy()
-
-
-
-def _default_pattern_for_file(cottas_path: str) -> str:
-    meta = get_metadata(cottas_path)
-    if meta["is_quad_table"]:
-        return build_triple_pattern(None, None, None, None)
-    return build_triple_pattern(None, None, None)
-
 
 
 def get_sample_triples(cottas_path: str, limit: int = 100) -> pd.DataFrame:
@@ -284,11 +347,9 @@ def get_sample_triples(cottas_path: str, limit: int = 100) -> pd.DataFrame:
     return _get_sample_triples_cached(*token, int(limit)).copy()
 
 
-
 def get_predicate_distribution(cottas_path: str, top_n: int = 20) -> pd.DataFrame:
     token = _file_cache_token(cottas_path)
     return _get_predicate_distribution_cached(*token, int(top_n)).copy()
-
 
 
 def get_search_sql(
@@ -305,6 +366,8 @@ def get_search_sql(
         meta = get_metadata(cottas_path)
         if graph and not meta["is_quad_table"]:
             raise COTTASError("This file is not a quad table; you cannot filter by graph.")
+        if meta.get("num_triples") == 0:
+            return "-- Empty COTTAS file: no triples to search."
         pattern = (
             build_triple_pattern(subject, predicate, obj, graph)
             if meta["is_quad_table"]
@@ -313,7 +376,6 @@ def get_search_sql(
         return pycottas.translate_triple_pattern(cottas_path, pattern, limit=limit, offset=offset)
     except Exception as exc:
         raise COTTASError(f"Could not generate SQL for the pattern: {exc}") from exc
-
 
 
 def search_triple_pattern(
@@ -330,6 +392,8 @@ def search_triple_pattern(
         meta = get_metadata(cottas_path)
         if graph and not meta["is_quad_table"]:
             raise COTTASError("This file is not a quad table; you cannot filter by graph.")
+        if meta.get("num_triples") == 0:
+            return _empty_triples_dataframe(meta["is_quad_table"])
         pattern = (
             build_triple_pattern(
                 subject=subject,
@@ -354,10 +418,12 @@ def search_triple_pattern(
         raise COTTASError(f"Error evaluating triple pattern: {exc}") from exc
 
 
-
 def run_sparql_select(cottas_path: str, query: str) -> pd.DataFrame:
     _require_pycottas()
     try:
+        meta = get_metadata(cottas_path)
+        if meta.get("num_triples") == 0:
+            return pd.DataFrame()
         store = pycottas.COTTASStore(cottas_path)
         graph = rdflib.Graph(store=store)
         results = graph.query(query)
@@ -367,7 +433,6 @@ def run_sparql_select(cottas_path: str, query: str) -> pd.DataFrame:
     except Exception as exc:
         logger.exception("Error running SPARQL query on %s", cottas_path)
         raise COTTASError(f"Error running SPARQL query: {exc}") from exc
-
 
 
 def diff_cottas_files(path_a: str, path_b: str, output_path: str, index: str = "SPO") -> None:
@@ -384,7 +449,6 @@ def diff_cottas_files(path_a: str, path_b: str, output_path: str, index: str = "
         raise COTTASError(f"Error computing difference: {exc}") from exc
 
 
-
 def merge_cottas_files(paths: list[str], output_path: str, index: str = "SPO") -> None:
     _require_pycottas()
     try:
@@ -397,7 +461,6 @@ def merge_cottas_files(paths: list[str], output_path: str, index: str = "SPO") -
     except Exception as exc:
         logger.exception("Error merging COTTAS files: %s", paths)
         raise COTTASError(f"Error merging files: {exc}") from exc
-
 
 
 def _to_dataframe(results) -> pd.DataFrame:
@@ -434,7 +497,7 @@ def _to_dataframe(results) -> pd.DataFrame:
                         "graph": "" if triple[3] is None else str(triple[3]),
                     }
                 )
-            elif len(triple) >= 3:
+            elif len(triple) == 3:
                 rows.append(
                     {
                         "subject": str(triple[0]),
@@ -442,8 +505,6 @@ def _to_dataframe(results) -> pd.DataFrame:
                         "object": str(triple[2]),
                     }
                 )
-            else:
-                rows.append({"subject": str(triple), "predicate": "", "object": ""})
             continue
 
         rows.append({"subject": str(triple), "predicate": "", "object": ""})
@@ -452,8 +513,6 @@ def _to_dataframe(results) -> pd.DataFrame:
         return pd.DataFrame(columns=columns_3)
 
     df = pd.DataFrame(rows)
-    target_columns = columns_4 if max_width >= 4 or "graph" in df.columns else columns_3
-    for column in target_columns:
-        if column not in df.columns:
-            df[column] = ""
-    return df[target_columns]
+    if max_width >= 4 or "graph" in df.columns:
+        return df.reindex(columns=columns_4)
+    return df.reindex(columns=columns_3)

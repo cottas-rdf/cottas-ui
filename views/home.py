@@ -57,7 +57,7 @@ def render() -> None:
             "Triples present in one graph but absent in the other."), unsafe_allow_html=True)
     with c7:
         st.markdown(_card("merge", "#3B82F6", "Merge",
-            "Union of multiple COTTAS files into a single graph."), unsafe_allow_html=True)
+            "Union of two COTTAS files into a single graph."), unsafe_allow_html=True)
 
     st.divider()
 

@@ -1,7 +1,4 @@
-"""
-test_file_manager.py
-Pruebas unitarias del módulo utils/file_manager.py.
-"""
+"""Unit tests for utils.file_manager."""
 
 import os
 import shutil
@@ -22,7 +19,7 @@ from utils.file_manager import (
 
 @pytest.fixture(autouse=True)
 def mock_session_state(monkeypatch):
-    """Simula st.session_state como un dict simple."""
+    """Simulates st.session_state as a plain dictionary."""
     state = {}
     import utils.file_manager as fm
     monkeypatch.setattr(fm.st, "session_state", state, raising=False)
@@ -31,14 +28,14 @@ def mock_session_state(monkeypatch):
 
 @pytest.fixture
 def temp_session_dir(mock_session_state):
-    """Crea un directorio temporal limpio y lo registra en session_state."""
+    """Creates a clean temporary directory and registers it in session_state."""
     d = tempfile.mkdtemp(prefix="cottas_fm_test_")
     mock_session_state["temp_dir"] = d
     yield d
     shutil.rmtree(d, ignore_errors=True)
 
 
-# ─── Tests de temp_path ───────────────────────────────────────────────────────
+# ─── Tests for temp_path ───────────────────────────────────────────────────────
 
 class TestTempPath:
     def test_returns_path_inside_session_dir(self, temp_session_dir):
@@ -56,7 +53,7 @@ class TestTempPath:
         assert not os.path.exists(p)
 
 
-# ─── Tests de read_bytes ──────────────────────────────────────────────────────
+# ─── Tests for read_bytes ──────────────────────────────────────────────────────
 
 class TestReadBytes:
     def test_reads_existing_file(self, tmp_path):
@@ -79,12 +76,12 @@ class TestReadBytes:
         assert read_bytes(str(f)) == b""
 
 
-# ─── Tests de file_size_mb ────────────────────────────────────────────────────
+# ─── Tests for file_size_mb ────────────────────────────────────────────────────
 
 class TestFileSizeMb:
     def test_known_size(self, tmp_path):
         f = tmp_path / "sized.bin"
-        f.write_bytes(b"A" * (1024 * 1024))   # exactamente 1 MB
+        f.write_bytes(b"A" * (1024 * 1024))   # exactly 1 MB
         assert abs(file_size_mb(str(f)) - 1.0) < 1e-6
 
     def test_empty_file_is_zero(self, tmp_path):
@@ -98,7 +95,7 @@ class TestFileSizeMb:
         assert file_size_mb(str(f)) < 1.0
 
 
-# ─── Tests de file_exists ────────────────────────────────────────────────────
+# ─── Tests for file_exists ────────────────────────────────────────────────────
 
 class TestFileExists:
     def test_existing_file_returns_true(self, tmp_path):
@@ -110,11 +107,11 @@ class TestFileExists:
         assert file_exists(str(tmp_path / "nope.txt")) is False
 
     def test_directory_returns_false(self, tmp_path):
-        # file_exists debe devolver False para directorios
+        # file_exists must return False for directories
         assert file_exists(str(tmp_path)) is False
 
 
-# ─── Tests de _cleanup ───────────────────────────────────────────────────────
+# ─── Tests for _cleanup ───────────────────────────────────────────────────────
 
 class TestCleanup:
     def test_removes_existing_directory(self, tmp_path):

@@ -94,10 +94,11 @@ def _run_compression(uploaded, index, disk_mode, output_name, original_size_mb):
     c1.metric("Original size", f"{original_size_mb:.2f} MB")
     c2.metric("COTTAS size", f"{output_size_mb:.2f} MB")
     c3.metric("Ratio", f"{acr:.1f}%")
-    c4.metric("Triples", f"{meta['num_triples']:,}" if meta.get("num_triples") else "N/A")
+    num_triples = meta.get("num_triples")
+    c4.metric("Triples", f"{num_triples:,}" if num_triples is not None else "N/A")
 
     c5, c6, c7 = st.columns(3)
-    c5.metric("Distinct properties", f"{meta['num_properties']:,}" if meta.get("num_properties") else "N/A")
+    c5.metric("Distinct properties", f"{meta['num_properties']:,}" if meta.get("num_properties") is not None else "N/A")
     c6.metric("Index", meta.get("index", index))
     c7.metric("Type", "Quad table" if meta.get("is_quad_table") else "Triple table")
 

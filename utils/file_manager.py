@@ -11,7 +11,10 @@ import streamlit as st
 def init_session_dir() -> str:
     """Creates (or retrieves) the session temporary directory."""
     if "temp_dir" not in st.session_state:
-        temp_dir = tempfile.mkdtemp(prefix="cottas_app_")
+        base_dir = os.environ.get("COTTAS_TMP_DIR")
+        if base_dir:
+            os.makedirs(base_dir, exist_ok=True)
+        temp_dir = tempfile.mkdtemp(prefix="cottas_app_", dir=base_dir)
         st.session_state["temp_dir"] = temp_dir
         atexit.register(_cleanup, temp_dir)
     return st.session_state["temp_dir"]
