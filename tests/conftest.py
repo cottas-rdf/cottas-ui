@@ -11,7 +11,7 @@ import pytest
 
 @pytest.fixture(scope="session")
 def tmp_dir():
-    """Directorio temporal que persiste durante toda la sesión de test."""
+    """Temporary directory persisted for the whole test session."""
     d = tempfile.mkdtemp(prefix="cottas_test_")
     yield d
     shutil.rmtree(d, ignore_errors=True)
@@ -19,7 +19,7 @@ def tmp_dir():
 
 @pytest.fixture
 def sample_nt_file(tmp_dir):
-    """Fichero N-Triples mínimo de prueba."""
+    """Minimal N-Triples test file."""
     content = (
         "<http://example.org/Alice> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> "
         "<http://schema.org/Person> .\n"
@@ -37,8 +37,8 @@ def sample_nt_file(tmp_dir):
 
 @pytest.fixture
 def sample_cottas_file(tmp_dir, sample_nt_file):
-    """Fichero COTTAS generado desde el N-Triples de prueba (requiere pycottas)."""
-    pycottas = pytest.importorskip("pycottas", reason="pycottas no instalado")
+    """COTTAS file generated from the test N-Triples file (requires pycottas)."""
+    pycottas = pytest.importorskip("pycottas", reason="pycottas not installed")
     output = os.path.join(tmp_dir, "sample.cottas")
-    pycottas.compress(sample_nt_file, output, index="SPO", compression_level=1)
+    pycottas.rdf2cottas(sample_nt_file, output, index="spo", disk=False)
     return output

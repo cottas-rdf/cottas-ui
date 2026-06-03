@@ -1,37 +1,38 @@
 FROM python:3.11-slim
 
-# Metadatos
+# Metadata
 LABEL maintainer="TFG COTTAS Manager"
-LABEL description="Aplicación web Streamlit para gestión de grafos RDF en formato COTTAS"
+LABEL description="Streamlit web application for managing RDF graphs in COTTAS format"
 
-# Variables de entorno
+# Environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     STREAMLIT_SERVER_PORT=8501 \
     STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
     STREAMLIT_SERVER_HEADLESS=true \
-    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
+    COTTAS_TMP_DIR=/tmp/cottas_app
 
 WORKDIR /app
 
-# Instalar dependencias del sistema
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependencias Python
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copiar código fuente
+# Copy source code
 COPY . .
 
-# Crear directorio para ficheros temporales
+# Create directory for temporary files
 RUN mkdir -p /tmp/cottas_app && chmod 777 /tmp/cottas_app
 
-# Puerto de Streamlit
+# Streamlit port
 EXPOSE 8501
 
 # Health check

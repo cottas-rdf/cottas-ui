@@ -11,26 +11,26 @@ MAX_DISPLAY = 10_000
 
 
 def render() -> None:
-    _page_header("Buscar tripletas",
-                 "Evalúa patrones <code>(s, p, o[, g])</code> sobre el grafo comprimido. Deja un campo vacío para tratarlo como variable.")
+    _page_header("Triple Search",
+                 "Evaluate triple patterns directly on the compressed file. Leave a field empty to use it as a variable.")
 
-    tab_upload, tab_active = st.tabs(["Subir fichero", "Fichero activo"])
+    tab_upload, tab_active = st.tabs(["Upload file", "Active file"])
     cottas_path = None
 
     with tab_upload:
-        uploaded = st.file_uploader("Fichero COTTAS", type=["cottas", "parquet"], key="search_upload")
+        uploaded = st.file_uploader("COTTAS file", type=["cottas", "parquet"], key="search_upload")
         if uploaded:
             cottas_path = persist_uploaded_file(uploaded, state_key="search_uploaded_path", suffix=".cottas")
             st.session_state["active_cottas"] = cottas_path
             st.session_state["active_name"] = uploaded.name
-            st.success(f"{uploaded.name} ({file_size_mb(cottas_path):.2f} MB) listo.")
+            st.success(f"{uploaded.name} ({file_size_mb(cottas_path):.2f} MB) ready.")
 
     with tab_active:
         if st.session_state.get("active_cottas"):
             cottas_path = st.session_state["active_cottas"]
-            st.info(f"Usando **{st.session_state['active_name']}** · {file_size_mb(cottas_path):.2f} MB")
+            st.info(f"Using **{st.session_state['active_name']}** · {file_size_mb(cottas_path):.2f} MB")
         else:
-            st.markdown("<div class='info-box muted'>No hay ningún fichero COTTAS activo. Carga uno desde la pestaña <b>Subir fichero</b>.</div>", unsafe_allow_html=True)
+            st.markdown("<div class='info-box muted'>No active COTTAS file. Load one from the <b>Upload file</b> tab.</div>", unsafe_allow_html=True)
 
     if cottas_path is None:
         return
@@ -42,9 +42,9 @@ def render() -> None:
         return
 
     st.divider()
-    _section_title("Patrón de búsqueda")
+    _section_title("Search pattern")
     st.markdown(
-        "<div class='info-box'>Términos RDF serializados en N3. Ejemplos: "
+        "<div class='info-box'>N3-serialized RDF terms. Examples: "
         "<code>&lt;http://dbpedia.org/resource/Madrid&gt;</code>, "
         "<code>&quot;Madrid&quot;@es</code>, "
         "<code>&quot;42&quot;^^&lt;http://www.w3.org/2001/XMLSchema#integer&gt;</code>.</div>",
@@ -53,15 +53,16 @@ def render() -> None:
 
     col_s, col_p, col_o = st.columns(3)
     with col_s:
-        subject = st.text_input("Sujeto", placeholder="<http://...> o vacío", key="search_subject")
+        subject = st.text_input("Subject", placeholder="<http://...> or empty", key="search_subject")
     with col_p:
-        predicate = st.text_input("Predicado", placeholder="<http://...> o vacío", key="search_predicate")
+        predicate = st.text_input("Predicate", placeholder="<http://...> or empty", key="search_predicate")
     with col_o:
-        obj = st.text_input("Objeto", placeholder='<http://...> / "literal" o vacío', key="search_object")
+        obj = st.text_input("Object", placeholder='<http://...> / "literal" or empty', key="search_object")
 
     graph = None
     if meta.get("is_quad_table"):
-        graph = st.text_input("Grafo (opcional)", placeholder="<http://...> o vacío", key="search_graph")
+        graph = st.text_input("Graph (optional)", placeholder="<http://...> or empty", key="search_graph")
+        st.caption("This file is a quad table. You can optionally filter by named graph.")
 
     pattern_preview = (
         build_triple_pattern(subject.strip() or None, predicate.strip() or None, obj.strip() or None,
@@ -72,19 +73,19 @@ def render() -> None:
     suggestion = recommend_index(subject, predicate, obj)
 
     st.markdown(
-        f"<div class='info-box' style='font-family:\"JetBrains Mono\",monospace;'>Patrón · <b>{pattern_preview}</b></div>",
+        f"<div class='info-box' style='font-family:\"JetBrains Mono\",monospace;'>Pattern · <b>{pattern_preview}</b></div>",
         unsafe_allow_html=True,
     )
-    st.caption(f"Índice sugerido: **{suggestion}**")
+    st.caption(f"Suggested index: **{suggestion}**")
 
     with st.form("search_form"):
-        with st.expander("Opciones avanzadas"):
-            limit = st.number_input("Límite de resultados", min_value=1, max_value=1_000_000, value=MAX_DISPLAY, step=1_000)
+        with st.expander("Advanced options"):
+            limit = st.number_input("Result limit", min_value=1, max_value=1_000_000, value=MAX_DISPLAY, step=1_000)
             offset = st.number_input("Offset", min_value=0, max_value=1_000_000, value=0, step=100,
-                                      help="Desplazamiento inicial para paginación en el motor.")
-            page_size = st.selectbox("Filas por página", [25, 50, 100, 200, 500], index=1)
+                                      help="Initial offset for engine-level pagination.")
+            page_size = st.selectbox("Rows per page", [25, 50, 100, 200, 500], index=1)
 
-        with st.expander("SQL generado"):
+        with st.expander("Generated SQL"):
             try:
                 sql = get_search_sql(
                     cottas_path,
@@ -98,7 +99,7 @@ def render() -> None:
             except COTTASError as exc:
                 st.warning(str(exc))
 
-        submitted = st.form_submit_button("Buscar", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Search", type="primary", use_container_width=True)
 
     if submitted:
         _run_search(cottas_path, subject.strip() or None, predicate.strip() or None, obj.strip() or None,
@@ -111,7 +112,7 @@ def render() -> None:
 
 
 def _run_search(cottas_path, subject, predicate, obj, graph, limit, offset, page_size):
-    with st.spinner("Evaluando patrón…"):
+    with st.spinner("Evaluating pattern..."):
         t0 = time.perf_counter()
         try:
             df = search_triple_pattern(cottas_path=cottas_path, subject=subject, predicate=predicate,
@@ -123,14 +124,14 @@ def _run_search(cottas_path, subject, predicate, obj, graph, limit, offset, page
 
     n = len(df)
     if n >= limit:
-        st.warning(f"Se muestran los primeros **{n:,}** resultados desde el offset {offset:,}. "
-                   "Aumenta el límite o el offset para seguir navegando.")
+        st.warning(f"Showing the first **{n:,}** results from offset {offset:,}. "
+                   "Increase the limit or offset to continue browsing.")
     else:
-        st.success(f"{n:,} resultados en {elapsed:.3f} s.")
+        st.success(f"{n:,} results in {elapsed:.3f} s.")
 
     ts = datetime.datetime.now().strftime("%H:%M:%S")
     st.session_state["history"].append(
-        f"[{ts}] Búsqueda · ({subject or '?'}, {predicate or '?'}, {obj or '?'}) → {n:,} resultados ({elapsed:.3f}s)"
+        f"[{ts}] Search · ({subject or '?'}, {predicate or '?'}, {obj or '?'}) → {n:,} results ({elapsed:.3f}s)"
     )
     st.session_state["last_search_df"] = df
     st.session_state["last_search_token"] = datetime.datetime.now().strftime("%H%M%S%f")
@@ -138,29 +139,29 @@ def _run_search(cottas_path, subject, predicate, obj, graph, limit, offset, page
 
 def _display_results(df: pd.DataFrame, page_size: int, key_prefix: str = "search_results"):
     if df.empty:
-        st.info("Sin resultados para el patrón especificado.")
+        st.info("No results for the specified pattern.")
         return
 
     n = len(df)
     total_pages = (n - 1) // page_size + 1
-    _section_title(f"Resultados · {n:,} filas")
+    _section_title(f"Results · {n:,} rows")
 
     if total_pages > 1:
         col_pg, col_info = st.columns([2, 3])
         with col_pg:
-            page_num = st.number_input(f"Página (1–{total_pages})", min_value=1, max_value=total_pages,
+            page_num = st.number_input(f"Page (1–{total_pages})", min_value=1, max_value=total_pages,
                                         value=1, step=1, key=f"{key_prefix}_page")
         with col_info:
-            st.caption(f"Página {page_num} de {total_pages} · {page_size} filas/página")
+            st.caption(f"Page {page_num} of {total_pages} · {page_size} rows/page")
         start = (page_num - 1) * page_size
         page_df = df.iloc[start:start + page_size]
     else:
         page_df = df
 
     st.dataframe(page_df, use_container_width=True, height=420)
-    st.download_button(label="Descargar resultados (CSV)",
+    st.download_button(label="Download results (CSV)",
                        data=df.to_csv(index=False).encode("utf-8"),
-                       file_name="resultados_busqueda.csv", mime="text/csv",
+                       file_name="search_results.csv", mime="text/csv",
                        key=f"{key_prefix}_download")
 
 

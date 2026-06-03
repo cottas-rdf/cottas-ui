@@ -17,26 +17,26 @@ LIMIT 50
 
 
 def render() -> None:
-    _page_header("Consulta SPARQL",
-                 "Lanza consultas <code>SELECT</code> sobre el grafo COTTAS mediante COTTASStore como backend de RDFLib.")
+    _page_header("SPARQL Query",
+                 "Run <code>SELECT</code> queries over the COTTAS graph using COTTASStore as an RDFLib backend.")
 
-    tab_up, tab_act = st.tabs(["Subir fichero", "Fichero activo"])
+    tab_up, tab_act = st.tabs(["Upload file", "Active file"])
     cottas_path = None
 
     with tab_up:
-        uploaded = st.file_uploader("Fichero COTTAS", type=["cottas", "parquet"], key="sparql_up")
+        uploaded = st.file_uploader("COTTAS file", type=["cottas", "parquet"], key="sparql_up")
         if uploaded:
             cottas_path = persist_uploaded_file(uploaded, state_key="sparql_uploaded_path", suffix=".cottas")
             st.session_state["active_cottas"] = cottas_path
             st.session_state["active_name"] = uploaded.name
-            st.success(f"{uploaded.name} ({file_size_mb(cottas_path):.2f} MB) listo.")
+            st.success(f"{uploaded.name} ({file_size_mb(cottas_path):.2f} MB) ready.")
 
     with tab_act:
         if st.session_state.get("active_cottas"):
             cottas_path = st.session_state["active_cottas"]
-            st.info(f"Usando **{st.session_state['active_name']}** · {file_size_mb(cottas_path):.2f} MB")
+            st.info(f"Using **{st.session_state['active_name']}** · {file_size_mb(cottas_path):.2f} MB")
         else:
-            st.markdown("<div class='info-box muted'>No hay ningún fichero COTTAS activo. Carga uno desde la pestaña <b>Subir fichero</b>.</div>", unsafe_allow_html=True)
+            st.markdown("<div class='info-box muted'>No active COTTAS file. Load one from the <b>Upload file</b> tab.</div>", unsafe_allow_html=True)
 
     if not cottas_path:
         return
@@ -48,25 +48,25 @@ def render() -> None:
         return
 
     if meta.get("is_quad_table"):
-        st.info("Este fichero es un **quad table**. Las consultas pueden referenciar named graphs.")
+        st.info("This file is a **quad table**. Queries may reference named graphs.")
 
     st.divider()
-    _section_title("Consulta")
+    _section_title("Query")
     st.markdown(
-        "<div class='info-box'>Solo se admiten consultas de lectura (<code>SELECT</code>). "
-        "Las operaciones de modificación están fuera del alcance de la aplicación.</div>",
+        "<div class='info-box'>Only read queries (<code>SELECT</code>) are supported. "
+        "Modification operations are out of scope.</div>",
         unsafe_allow_html=True,
     )
 
     with st.form("sparql_form"):
-        query = st.text_area("Consulta SPARQL", value=DEFAULT_QUERY, height=240,
-                              help="Puedes incluir declaraciones PREFIX y una cláusula LIMIT en la propia consulta.")
+        query = st.text_area("SPARQL Query", value=DEFAULT_QUERY, height=240,
+                              help="You can include PREFIX declarations and a LIMIT clause in the query itself.")
         limit_override = st.number_input(
-            "Recorte adicional de resultados (0 = sin recorte)",
+            "Additional result limit (0 = no limit)",
             min_value=0, max_value=100_000, value=0, step=100,
-            help="Se aplica tras ejecutar la consulta para limitar las filas mostradas en la interfaz.",
+            help="Applied after query execution to limit the rows shown in the UI.",
         )
-        submitted = st.form_submit_button("Ejecutar", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Execute", type="primary", use_container_width=True)
 
     if submitted:
         _run_sparql(cottas_path, query, int(limit_override))
@@ -78,10 +78,10 @@ def render() -> None:
 
 def _run_sparql(cottas_path: str, query: str, limit_override: int):
     if not is_select_query(query):
-        st.error("Solo se admiten consultas SELECT. Puedes incluir PREFIX o BASE antes del SELECT.")
+        st.error("Only SELECT queries are supported. You can include PREFIX or BASE before the SELECT.")
         return
 
-    with st.spinner("Ejecutando consulta…"):
+    with st.spinner("Executing query..."):
         t0 = time.perf_counter()
         try:
             df = run_sparql_select(cottas_path, query)
@@ -93,24 +93,24 @@ def _run_sparql(cottas_path: str, query: str, limit_override: int):
     total_rows = len(df)
     if limit_override > 0 and len(df) > limit_override:
         df = df.head(limit_override)
-        st.warning(f"La consulta devolvió {total_rows:,} filas. Se muestran solo las primeras {limit_override:,}.")
+        st.warning(f"The query returned {total_rows:,} rows. Showing only the first {limit_override:,}.")
 
-    st.success(f"{total_rows:,} resultados en {elapsed:.3f} s.")
+    st.success(f"{total_rows:,} results in {elapsed:.3f} s.")
 
     ts = datetime.datetime.now().strftime("%H:%M:%S")
-    st.session_state["history"].append(f"[{ts}] SPARQL · {total_rows:,} resultados ({elapsed:.3f}s)")
+    st.session_state["history"].append(f"[{ts}] SPARQL · {total_rows:,} results ({elapsed:.3f}s)")
     st.session_state["last_sparql_df"] = df
     st.session_state["last_sparql_token"] = datetime.datetime.now().strftime("%H%M%S%f")
 
 
 def _show_results(df, key_prefix: str = "sparql_results"):
     if df.empty:
-        st.info("La consulta no devolvió resultados.")
+        st.info("The query returned no results.")
         return
 
-    _section_title(f"Resultados · {len(df):,} filas")
+    _section_title(f"Results · {len(df):,} rows")
     st.dataframe(df, use_container_width=True, height=420)
-    st.download_button("Descargar CSV", df.to_csv(index=False).encode("utf-8"),
+    st.download_button("Download CSV", df.to_csv(index=False).encode("utf-8"),
                        file_name="sparql_results.csv", mime="text/csv",
                        key=f"{key_prefix}_download")
 

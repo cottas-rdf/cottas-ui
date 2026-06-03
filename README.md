@@ -1,38 +1,38 @@
 # COTTAS Manager
 
-Aplicación web en Streamlit para la gestión de grafos RDF comprimidos en formato COTTAS.
+Streamlit web application for managing RDF graphs compressed in COTTAS format.
 
 > TFG · Universidad Politécnica de Madrid · Tutor: Julián Arenas-Guerrero
 
-## Funcionalidad
+## Features
 
-La aplicación envuelve la librería **pycottas** para ofrecer una interfaz visual con las siguientes operaciones:
+The application wraps the **pycottas** library to provide a visual interface for the following operations:
 
-- **Compresión** RDF → COTTAS desde TTL, NT, NQ, TriG, N3 y RDF/XML.
-- **Descompresión** COTTAS → RDF a cualquiera de los formatos anteriores.
-- **Exploración** de metadatos, estadísticas y muestras de tripletas.
-- **Búsqueda** por patrón `(s, p, o[, g])` directamente sobre el fichero comprimido.
-- **Consultas SPARQL SELECT** mediante `COTTASStore` como backend de RDFLib.
-- **Diferencia** entre dos grafos COTTAS.
-- **Fusión** de múltiples grafos COTTAS en uno único.
+- **Compression** RDF → COTTAS from TTL, NT, NQ, TriG, N3, and RDF/XML.
+- **Decompression** COTTAS → RDF in any of the above formats.
+- **Exploration** of metadata, predicate distribution, and triple samples.
+- **Search** by pattern `(s, p, o[, g])` directly on the compressed file.
+- **SPARQL SELECT queries** using `COTTASStore` as an RDFLib backend.
+- **Difference** between two COTTAS graphs.
+- **Merge** of two COTTAS files from the current UI; duplicate triples are collapsed according to RDF graph set semantics. The internal bridge accepts a list of paths, so the operation is prepared for N-file merge extension.
 
-## Detalles de implementación
+## Implementation details
 
-La integración con `pycottas` (versión 1.1.x) se concentra en `utils/cottas_bridge.py`, que aísla a la aplicación de cambios futuros en la API de la librería:
+Integration with `pycottas` (version 1.1.x) is concentrated in `utils/cottas_bridge.py`, which shields the application from future changes in the library's API:
 
-- La compresión usa los parámetros públicos `index` y `disk` de `pycottas.rdf2cottas`.
-- La descompresión combina `pycottas.cottas2rdf` con conversión a otros formatos mediante RDFLib.
-- La búsqueda por patrón utiliza `COTTASDocument.search(...)`.
-- SPARQL se ejecuta a través de `COTTASStore` como backend de RDFLib.
-- Las operaciones `merge` y `diff` materializan el resultado con el índice elegido por el usuario.
-- Los metadatos y la muestra de tripletas se cachean con `st.cache_data` para evitar recomputaciones cuando el fichero no cambia.
+- Compression uses the public parameters `index` and `disk` of `pycottas.rdf2cottas`.
+- Decompression combines `pycottas.cottas2rdf` with format conversion via RDFLib.
+- Pattern search uses `COTTASDocument.search(...)`.
+- SPARQL is executed through `COTTASStore` as an RDFLib backend.
+- `merge` and `diff` operations materialize the result with the user-selected index; empty difference results are handled as valid empty COTTAS outputs.
+- Metadata, triple samples, and predicate distributions are memoized in memory with Python `functools.lru_cache`, keyed by file path, modification time, size, and query parameters.
 
-## Requisitos
+## Requirements
 
 - Python **3.11+**
 - pip
 
-## Instalación local
+## Local installation
 
 ```bash
 python -m venv .venv
@@ -43,35 +43,35 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-La aplicación quedará disponible en `http://localhost:8501`.
+The application will be available at `http://localhost:8501`.
 
 ## Tests
 
-Los tests usan `pytest`, que es una dependencia de desarrollo y no se instala con `requirements.txt`. Para ejecutarlos:
+Tests use `pytest`, which is a development dependency and is not installed with `requirements.txt`. To run them:
 
 ```bash
 pip install pytest
 pytest tests/ -v
 ```
 
-La suite incluye tests unitarios para las capas de validación, gestión de ficheros, estadísticas y bridge a pycottas, así como tests de integración para los flujos completos de compresión, consulta SPARQL, diferencia y fusión.
+The suite includes unit tests for the validation, file management, predicate-distribution visualization, and pycottas bridge layers, as well as integration tests for the complete compression, SPARQL query, difference, and merge flows.
 
-## Despliegue con Docker
+## Docker deployment
 
 ```bash
 docker compose up --build
 ```
 
-La aplicación quedará disponible en `http://localhost:8501`.
+The application will be available at `http://localhost:8501`.
 
-El `Dockerfile` parte de `python:3.11-slim`, instala las dependencias fijadas en `requirements.txt`, expone el puerto `8501` y lanza Streamlit en modo *headless*. El `docker-compose.yml` añade un volumen para ficheros temporales (`/tmp/cottas_app`) y un *healthcheck* contra `/_stcore/health`.
+The `Dockerfile` starts from `python:3.11-slim`, installs the dependencies declared in `requirements.txt`, exposes port `8501`, sets `COTTAS_TMP_DIR=/tmp/cottas_app`, and launches Streamlit in headless mode. The `docker-compose.yml` adds a volume for temporary files (`/tmp/cottas_app`) and a healthcheck against `/_stcore/health`.
 
-## Estructura del proyecto
+## Project structure
 
 ```text
 cottas-ui/
-├── app.py                    # Punto de entrada Streamlit + enrutamiento
-├── views/                    # Vistas (una por operación)
+├── app.py                    # Streamlit entry point + routing
+├── views/                    # Views (one per operation)
 │   ├── home.py
 │   ├── compress.py
 │   ├── decompress.py
@@ -80,13 +80,13 @@ cottas-ui/
 │   ├── sparql.py
 │   ├── diff.py
 │   └── merge.py
-├── utils/                    # Capa de servicios
-│   ├── cottas_bridge.py      # Wrapper sobre pycottas
-│   ├── file_manager.py       # Sesiones y ficheros temporales
-│   ├── stats.py              # Métricas y visualizaciones
-│   └── validation.py         # Validación de entradas
-├── tests/                    # Tests unitarios y de integración
-├── .streamlit/               # Configuración de tema y servidor
+├── utils/                    # Services layer
+│   ├── cottas_bridge.py      # Wrapper over pycottas
+│   ├── file_manager.py       # Sessions and temporary files
+│   ├── stats.py              # Predicate-distribution visualization
+│   └── validation.py         # Input validation
+├── tests/                    # Unit and integration tests
+├── .streamlit/               # Theme and server configuration
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
@@ -94,7 +94,7 @@ cottas-ui/
 └── README.md
 ```
 
-## Arquitectura
+## Architecture
 
 ```text
 ┌──────────────────────────────────────┐
@@ -105,7 +105,7 @@ cottas-ui/
 └─────────────────┬────────────────────┘
                   │
 ┌─────────────────▼────────────────────┐
-│  Capa de servicios (utils/)          │
+│  Services layer (utils/)             │
 │  cottas_bridge · validation ·        │
 │  file_manager · stats                │
 └─────────────────┬────────────────────┘
@@ -115,34 +115,35 @@ cottas-ui/
 └──────────────────────────────────────┘
 ```
 
-Las vistas (`views/`) gestionan únicamente la UI y el estado de sesión; toda la lógica de compresión, consulta y manipulación vive en `utils/cottas_bridge.py`. Esta separación aísla la aplicación de los cambios en la API de `pycottas`: si la librería evoluciona, solo se modifica el bridge.
+Views (`views/`) handle only UI and session state; all compression, query, and manipulation logic lives in `utils/cottas_bridge.py`. This separation shields the application from changes in the `pycottas` API: if the library evolves, only the bridge needs to be updated.
 
-## Casos de uso
+## Use cases
 
-| Vista       | Entrada                          | Salida                          |
-|-------------|----------------------------------|---------------------------------|
-| Compress    | `.ttl` / `.nt` / `.rdf` / `.nq`  | `.cottas`                       |
-| Decompress  | `.cottas`                        | `.ttl` / `.nt` / `.rdf` / `.nq` |
-| Explore     | `.cottas`                        | metadatos + estadísticas        |
-| Search      | `.cottas` + patrón `(s,p,o[,g])` | tabla de tripletas              |
-| SPARQL      | `.cottas` + consulta SELECT      | tabla de resultados             |
-| Diff        | 2 × `.cottas`                    | `.cottas` con la diferencia     |
-| Merge       | N × `.cottas`                    | `.cottas` fusionado             |
+| View       | Input                                                         | Output                          |
+|------------|---------------------------------------------------------------|---------------------------------|
+| Compress   | `.ttl` / `.nt` / `.rdf` / `.nq`                               | `.cottas`                       |
+| Decompress | `.cottas`                                                     | `.ttl` / `.nt` / `.rdf` / `.nq` |
+| Explore    | `.cottas`                                                     | metadata + predicate chart      |
+| Search     | `.cottas` + pattern `(s,p,o[,g])`                             | triples table                   |
+| SPARQL     | `.cottas` + SELECT query                                      | results table                   |
+| Diff       | 2 × `.cottas`                                                 | `.cottas` with the difference   |
+| Merge      | 2 × `.cottas`in the current UI; list of paths in the bridge   | union `.cottas`                 |
 
-## Notas técnicas
+## Technical notes
 
-- COTTAS almacena RDF como triple table o quad table en **Apache Parquet**.
-- La librería pycottas soporta tanto **triples como quads**.
-- Para preservar named graphs al descomprimir un quad table, solo formatos como **N-Quads** y **TriG** son válidos. La interfaz advierte automáticamente cuando se selecciona un formato incompatible.
-- La vista de búsqueda muestra el **SQL generado** por pycottas en un expander, útil para entender cómo se traduce un patrón de tripletas a una consulta sobre Parquet.
+- COTTAS stores RDF as a triple table or quad table in **Apache Parquet**.
+- The pycottas library supports both **triples and quads**.
+- To preserve named graphs when decompressing a quad table, only formats such as **N-Quads** and **TriG** are valid. The interface automatically warns when an incompatible format is selected.
+- The search view shows the **SQL generated** by pycottas in an expander, useful for understanding how a triple pattern is translated into a query over Parquet.
+- The merge view computes the union of RDF triples, so merging two identical graphs produces the same number of triples, not twice as many.
 
-## Posibles extensiones
+## Possible extensions
 
-- Despliegue público en Streamlit Community Cloud.
-- Tests end-to-end de la interfaz con Playwright.
-- Módulo de benchmarking para comparar rendimiento entre índices con datasets medianos.
-- Integración con SPARQL endpoints externos para consultas federadas.
+- Public deployment on Streamlit Community Cloud.
+- End-to-end UI tests with Playwright.
+- Benchmarking module to compare performance between indexes with medium-sized datasets.
+- Integration with external SPARQL endpoints for federated queries.
 
-## Licencia
+## License
 
-Apache 2.0 — ver `LICENSE`.
+Apache 2.0 — see `LICENSE`.

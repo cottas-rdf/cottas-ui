@@ -17,78 +17,78 @@ def render() -> None:
           </h1>
           <p style='color:#94A3B8;font-size:1.15rem;max-width:720px;
                     margin:0;line-height:1.6;'>
-            Compresión, consulta y análisis de grafos RDF mediante el formato
-            columnar <b style='color:#F1F5F9;font-weight:600;'>COTTAS</b>.
+            Compression, querying, and analysis of RDF graphs through the
+            columnar <b style='color:#F1F5F9;font-weight:600;'>COTTAS</b> format.
           </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    _section_title("Conversión", "Transformación entre RDF y COTTAS")
+    _section_title("Conversion", "Transformation between RDF and COTTAS")
     c1, c2 = st.columns(2, gap="medium")
     with c1:
-        st.markdown(_card("compress", "#3B82F6", "Comprimir",
-            "De RDF a COTTAS. Acepta TTL, NT, NQ, TriG, N3 y RDF/XML."), unsafe_allow_html=True)
+        st.markdown(_card("compress", "#3B82F6", "Compress",
+            "From RDF to COTTAS. Accepts TTL, NT, NQ, TriG, N3, and RDF/XML."), unsafe_allow_html=True)
     with c2:
-        st.markdown(_card("unarchive", "#3B82F6", "Descomprimir",
-            "De COTTAS a RDF en el formato de salida que necesites."), unsafe_allow_html=True)
+        st.markdown(_card("unarchive", "#3B82F6", "Decompress",
+            "From COTTAS to RDF in the output format you need."), unsafe_allow_html=True)
 
     st.markdown("<div style='height:22px'></div>", unsafe_allow_html=True)
 
-    _section_title("Consulta y análisis", "Exploración del grafo comprimido")
+    _section_title("Query & analysis", "Exploration of the compressed graph")
     c3, c4, c5 = st.columns(3, gap="medium")
     with c3:
-        st.markdown(_card("travel_explore", "#A78BFA", "Explorar",
-            "Metadatos, muestra de tripletas y distribución de predicados."), unsafe_allow_html=True)
+        st.markdown(_card("travel_explore", "#A78BFA", "Explore",
+            "Metadata, triple sample, and predicate distribution."), unsafe_allow_html=True)
     with c4:
-        st.markdown(_card("manage_search", "#A78BFA", "Buscar tripletas",
-            "Patrones (s, p, o[, g]) directamente sobre el fichero comprimido."), unsafe_allow_html=True)
+        st.markdown(_card("manage_search", "#A78BFA", "Triple Search",
+            "Triple patterns directly on the compressed file."), unsafe_allow_html=True)
     with c5:
         st.markdown(_card("terminal", "#A78BFA", "SPARQL",
-            "Consultas SELECT mediante COTTASStore y RDFLib."), unsafe_allow_html=True)
+            "SELECT queries using COTTASStore and RDFLib."), unsafe_allow_html=True)
 
     st.markdown("<div style='height:22px'></div>", unsafe_allow_html=True)
 
-    _section_title("Operaciones entre grafos", "Comparación y composición")
+    _section_title("Graph operations", "Comparison and composition")
     c6, c7 = st.columns(2, gap="medium")
     with c6:
-        st.markdown(_card("compare", "#3B82F6", "Diferencia",
-            "Tripletas presentes en un grafo y ausentes en el otro."), unsafe_allow_html=True)
+        st.markdown(_card("compare", "#3B82F6", "Difference",
+            "Triples present in one graph but absent in the other."), unsafe_allow_html=True)
     with c7:
-        st.markdown(_card("merge", "#3B82F6", "Fusión",
-            "Unión de múltiples ficheros COTTAS en un único grafo."), unsafe_allow_html=True)
+        st.markdown(_card("merge", "#3B82F6", "Merge",
+            "Union of two COTTAS files into a single graph."), unsafe_allow_html=True)
 
     st.divider()
 
-    with st.expander("Sobre COTTAS", expanded=False):
+    with st.expander("About COTTAS", expanded=False):
         st.markdown("""
-**COTTAS** (*Columnar Triple Table Storage*) almacena RDF como una tabla de tripletas en **Apache Parquet**, un formato columnar diseñado para análisis a gran escala.
+**COTTAS** (*Columnar Triple Table Storage*) stores RDF as a triple table in **Apache Parquet**, a columnar format designed for large-scale analytics.
 
-La librería **pycottas** proporciona:
+The **pycottas** library provides:
 
-- Compresión y descompresión entre RDF y COTTAS.
-- Evaluación de patrones de tripleta.
-- Soporte SPARQL a través de RDFLib.
-- Operaciones de fusión y diferencia entre grafos.
-- Soporte de **quads** además de triples.
+- Compression and decompression between RDF and COTTAS.
+- Triple pattern evaluation.
+- SPARQL support via RDFLib.
+- Merge and difference operations between graphs.
+- Support for **quads** in addition to triples.
         """)
 
-    with st.expander("Guía rápida"):
+    with st.expander("Quick start"):
         st.markdown("""
-1. Comprime un `.nt`, `.ttl`, `.nq`, `.trig`, `.n3` o `.rdf` desde la vista **Comprimir**.
-2. Explora el `.cottas` generado para inspeccionar metadatos y estadísticas.
-3. Busca patrones de tripleta o lanza consultas **SPARQL SELECT**.
-4. Descomprime a RDF o aplica operaciones de **diferencia** y **fusión**.
+1. Compress a `.nt`, `.ttl`, `.nq`, `.trig`, `.n3`, or `.rdf` file from the **Compress** view.
+2. Explore the generated `.cottas` to inspect metadata and statistics.
+3. Search triple patterns or run **SPARQL SELECT** queries.
+4. Decompress to RDF or apply **difference** and **merge** operations.
         """)
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    _section_title("Estado del entorno", "Dependencias principales")
+    _section_title("Environment status", "Main dependencies")
     _check_deps()
 
     history = st.session_state.get("history", [])
     if history:
-        with st.expander(f"Historial de operaciones · {len(history)}"):
+        with st.expander(f"Operation history · {len(history)}"):
             for entry in reversed(history[-20:]):
                 st.markdown(f"- {entry}")
 
@@ -160,7 +160,7 @@ def _check_deps() -> None:
                                 border-left:3px solid #EF4444;border-radius:0 8px 8px 0;
                                 padding:14px 18px;'>
                       <div style='color:#F1F5F9;font-weight:600;font-size:1.05rem;'>{label}</div>
-                      <div style='color:#EF4444;font-size:0.92rem;margin-top:4px;'>No disponible</div>
+                      <div style='color:#EF4444;font-size:0.92rem;margin-top:4px;'>Not available</div>
                     </div>
                     """,
                     unsafe_allow_html=True,

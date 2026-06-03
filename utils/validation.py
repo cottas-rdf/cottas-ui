@@ -19,7 +19,7 @@ def normalize_index(index: str) -> str:
     value = (index or "").strip().upper()
     if value not in VALID_INDEXES:
         raise ValidationError(
-            f"Índice no válido: {index!r}. Usa uno de: {', '.join(VALID_INDEXES)}."
+            f"Invalid index: {index!r}. Use one of: {', '.join(VALID_INDEXES)}."
         )
     return value
 

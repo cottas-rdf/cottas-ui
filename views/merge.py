@@ -9,52 +9,53 @@ from utils.validation import sanitize_output_stem
 
 
 def render() -> None:
-    _page_header("Fusión", "Combina dos ficheros COTTAS en uno único con la unión de sus tripletas (sin duplicados).")
+    _page_header("Merge", "Combines two COTTAS files into one with the union of their triples (no duplicates).")
 
     col_a, col_b = st.columns(2)
     with col_a:
-        _section_title("Grafo A")
-        up_a = st.file_uploader("Fichero COTTAS A", type=["cottas", "parquet"], key="merge_a")
+        _section_title("Graph A")
+        up_a = st.file_uploader("COTTAS file A", type=["cottas", "parquet"], key="merge_a")
         path_a = persist_uploaded_file(up_a, state_key="merge_a_path", suffix=".cottas") if up_a else None
         if up_a and path_a:
             st.success(f"{up_a.name} ({file_size_mb(path_a):.2f} MB)")
         else:
-            st.markdown("<div class='info-box muted'>Carga el grafo A.</div>", unsafe_allow_html=True)
+            st.markdown("<div class='info-box muted'>Load graph A.</div>", unsafe_allow_html=True)
 
     with col_b:
-        _section_title("Grafo B")
-        up_b = st.file_uploader("Fichero COTTAS B", type=["cottas", "parquet"], key="merge_b")
+        _section_title("Graph B")
+        up_b = st.file_uploader("COTTAS file B", type=["cottas", "parquet"], key="merge_b")
         path_b = persist_uploaded_file(up_b, state_key="merge_b_path", suffix=".cottas") if up_b else None
         if up_b and path_b:
             st.success(f"{up_b.name} ({file_size_mb(path_b):.2f} MB)")
         else:
-            st.markdown("<div class='info-box muted'>Carga el grafo B.</div>", unsafe_allow_html=True)
+            st.markdown("<div class='info-box muted'>Load graph B.</div>", unsafe_allow_html=True)
 
     if not path_a or not path_b:
         return
 
     st.divider()
+    st.caption("Merge computes an RDF graph union. Duplicate triples are kept only once.")
     with st.form("merge_form"):
-        index = st.selectbox("Índice del resultado", ["SPO","SOP","PSO","POS","OSP","OPS"], index=0,
-                              help="El resultado se materializa con el índice indicado.")
+        index = st.selectbox("Result index", ["SPO","SOP","PSO","POS","OSP","OPS"], index=0,
+                              help="The result is materialized with the specified index.")
         output_name = sanitize_output_stem(
-            st.text_input("Nombre del fichero resultado (sin extensión)",
+            st.text_input("Output file name (without extension)",
                           value=f"{os.path.splitext(up_a.name)[0]}_merged_{os.path.splitext(up_b.name)[0]}"),
             fallback="merge_result",
         )
-        submitted = st.form_submit_button("Fusionar A y B", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Merge A and B", type="primary", use_container_width=True)
 
     if submitted:
         _run(path_a, path_b, output_name, index, up_a.name, up_b.name)
 
     if st.session_state.get("merge_result_path"):
         _show_panel(st.session_state["merge_result_path"],
-                    st.session_state.get("merge_result_name", "resultado_merge.cottas"))
+                    st.session_state.get("merge_result_name", "merge_result.cottas"))
 
 
 def _run(path_a, path_b, output_name, index, name_a, name_b):
     output_path = temp_path(f"{output_name}.cottas")
-    with st.spinner("Fusionando grafos…"):
+    with st.spinner("Merging graphs..."):
         t0 = time.perf_counter()
         try:
             merge_cottas_files([path_a, path_b], output_path, index=index)
@@ -63,11 +64,11 @@ def _run(path_a, path_b, output_name, index, name_a, name_b):
             st.error(str(exc))
             return
 
-    st.success(f"Fusión completada en {elapsed:.1f} s.")
+    st.success(f"Merge completed in {elapsed:.1f} s.")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Tamaño A", f"{file_size_mb(path_a):.2f} MB")
-    c2.metric("Tamaño B", f"{file_size_mb(path_b):.2f} MB")
-    c3.metric("Resultado", f"{file_size_mb(output_path):.2f} MB")
+    c1.metric("Size A", f"{file_size_mb(path_a):.2f} MB")
+    c2.metric("Size B", f"{file_size_mb(path_b):.2f} MB")
+    c3.metric("Result", f"{file_size_mb(output_path):.2f} MB")
 
     st.session_state["active_cottas"] = output_path
     st.session_state["active_name"] = f"{output_name}.cottas"
@@ -78,23 +79,23 @@ def _run(path_a, path_b, output_name, index, name_a, name_b):
 
     ts = datetime.datetime.now().strftime("%H:%M:%S")
     st.session_state["history"].append(
-        f"[{ts}] Fusión · `{name_a}` + `{name_b}` → `{output_name}.cottas` (índice {index}, {elapsed:.1f}s)"
+        f"[{ts}] Merge · `{name_a}` + `{name_b}` → `{output_name}.cottas` (index {index}, {elapsed:.1f}s)"
     )
 
 
 def _show_panel(result_path, result_name):
     st.divider()
-    _section_title("Resultado")
-    st.info("El resultado se ha dejado como **fichero activo**. Puedes abrirlo en **Explorar**, **Buscar tripletas** o **SPARQL**.")
+    _section_title("Result")
+    st.info("The result has been set as the **active file**. You can open it in **Explore**, **Triple Search**, or **SPARQL**.")
 
-    st.download_button("Descargar como COTTAS", data=read_bytes(result_path), file_name=result_name,
+    st.download_button("Download as COTTAS", data=read_bytes(result_path), file_name=result_name,
                        mime="application/octet-stream", use_container_width=True,
                        key="merge_result_download_cottas")
 
     col_preview, col_nt = st.columns(2)
     with col_preview:
-        if st.button("Cargar vista previa", use_container_width=True, key="merge_load_preview"):
-            with st.spinner("Preparando vista previa…"):
+        if st.button("Load preview", use_container_width=True, key="merge_load_preview"):
+            with st.spinner("Loading preview..."):
                 try:
                     st.session_state["merge_preview_valid"] = verify_cottas_file(result_path)
                     st.session_state["merge_preview_meta"] = get_metadata(result_path)
@@ -104,32 +105,33 @@ def _show_panel(result_path, result_name):
 
     with col_nt:
         if st.session_state.get("merge_nt_path") and os.path.exists(st.session_state["merge_nt_path"]):
-            st.download_button("Descargar como N-Triples", data=read_bytes(st.session_state["merge_nt_path"]),
+            st.download_button("Download as N-Triples", data=read_bytes(st.session_state["merge_nt_path"]),
                                file_name=result_name.replace(".cottas", ".nt"), mime="application/n-triples",
                                use_container_width=True, key="merge_result_download_nt")
-        elif st.button("Preparar N-Triples", use_container_width=True, key="merge_prepare_nt"):
+        elif st.button("Prepare N-Triples", use_container_width=True, key="merge_prepare_nt"):
             nt_path = temp_path(os.path.splitext(result_name)[0] + ".nt")
-            with st.spinner("Convirtiendo a N-Triples…"):
+            with st.spinner("Converting to N-Triples..."):
                 try:
                     decompress_cottas(result_path, nt_path, output_format="ntriples")
                     st.session_state["merge_nt_path"] = nt_path
                     st.rerun()
                 except COTTASError as exc:
-                    st.warning(f"No se pudo preparar la descarga: {exc}")
+                    st.warning(f"Could not prepare download: {exc}")
 
     if st.session_state.get("merge_preview_meta") is not None:
         meta = st.session_state["merge_preview_meta"]
         sample_df = st.session_state.get("merge_preview_df")
         is_valid = st.session_state.get("merge_preview_valid")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Válido", "Sí" if is_valid else "No")
-        c2.metric("Tripletas", f"{meta['num_triples']:,}" if meta.get("num_triples") else "N/D")
-        c3.metric("Índice", meta.get("index", "N/D"))
-        c4.metric("Tipo", "Quad table" if meta.get("is_quad_table") else "Triple table")
+        c1.metric("Valid", "Yes" if is_valid else "No")
+        num_triples = meta.get("num_triples")
+        c2.metric("Triples", f"{num_triples:,}" if num_triples is not None else "N/A")
+        c3.metric("Index", meta.get("index", "N/A"))
+        c4.metric("Type", "Quad table" if meta.get("is_quad_table") else "Triple table")
         if sample_df is None or sample_df.empty:
-            st.info("El resultado es válido pero no contiene tripletas para mostrar.")
+            st.info("The result is valid but contains no triples to display.")
         else:
-            st.caption("Muestra de las primeras tripletas del resultado")
+            st.caption("Sample of the first triples in the result")
             st.dataframe(sample_df, use_container_width=True, height=320)
 
 

@@ -8,63 +8,63 @@ from utils.validation import sanitize_output_stem
 
 ACCEPTED_FORMATS = {".nt":"N-Triples",".ttl":"Turtle",".nq":"N-Quads",".trig":"TriG",".n3":"Notation3",".rdf":"RDF/XML",".xml":"RDF/XML"}
 INDEX_DESCRIPTIONS = {
-    "SPO": "Equilibrada. Adecuada para exploración general y consultas por sujeto.",
-    "SOP": "Consultas que filtran sujeto y objeto simultáneamente.",
-    "PSO": "Consultas con predicado fijo (?s p ?o).",
-    "POS": "Consultas con predicado y objeto fijos (?s p o).",
-    "OSP": "Búsquedas guiadas por objeto.",
-    "OPS": "Búsquedas guiadas por objeto y predicado.",
+    "SPO": "Balanced. Suitable for general exploration and subject-based queries.",
+    "SOP": "Queries filtering by subject and object simultaneously.",
+    "PSO": "Queries with a fixed predicate (?s p ?o).",
+    "POS": "Queries with fixed predicate and object (?s p o).",
+    "OSP": "Object-guided searches.",
+    "OPS": "Object- and predicate-guided searches.",
 }
 
 
 def render() -> None:
-    _page_header("Comprimir", "Transforma un grafo RDF al formato columnar COTTAS.")
+    _page_header("Compress", "Transform an RDF graph into the columnar COTTAS format.")
 
     uploaded = st.file_uploader(
-        "Fichero RDF de entrada",
+        "Input RDF file",
         type=[ext.lstrip(".") for ext in ACCEPTED_FORMATS],
-        help="Formatos aceptados: " + ", ".join(sorted(set(ACCEPTED_FORMATS.values()))),
+        help="Accepted formats: " + ", ".join(sorted(set(ACCEPTED_FORMATS.values()))),
     )
 
     if uploaded is None:
-        st.markdown("<div class='info-box muted'>Carga un fichero RDF para comenzar.</div>", unsafe_allow_html=True)
+        st.markdown("<div class='info-box muted'>Load an RDF file to begin.</div>", unsafe_allow_html=True)
         return
 
     extension = os.path.splitext(uploaded.name)[1].lower()
-    fmt_name = ACCEPTED_FORMATS.get(extension, "Desconocido")
+    fmt_name = ACCEPTED_FORMATS.get(extension, "Unknown")
     size_mb = len(uploaded.getbuffer()) / (1024 ** 2)
 
     col_a, col_b, col_c = st.columns(3)
-    col_a.metric("Fichero", uploaded.name)
-    col_b.metric("Formato", fmt_name)
-    col_c.metric("Tamaño", f"{size_mb:.2f} MB")
+    col_a.metric("File", uploaded.name)
+    col_b.metric("Format", fmt_name)
+    col_c.metric("Size", f"{size_mb:.2f} MB")
 
     st.divider()
-    _section_title("Parámetros")
+    _section_title("Parameters")
 
     col1, col2 = st.columns(2)
     with col1:
         index = st.selectbox(
-            "Índice COTTAS",
+            "COTTAS index",
             list(INDEX_DESCRIPTIONS.keys()),
-            help="Define la ordenación física de las tripletas y afecta al rendimiento de búsqueda.",
+            help="Defines the physical ordering of triples and affects search performance.",
             key="compress_index",
         )
         st.caption(INDEX_DESCRIPTIONS[index])
     with col2:
         disk_mode = st.toggle(
-            "Almacenamiento temporal en disco",
+            "Temporary disk storage",
             value=False,
-            help="Recomendado para ficheros grandes. Reduce picos de memoria a cambio de un tiempo de compresión mayor.",
+            help="Recommended for large files. Reduces memory peaks at the cost of longer compression time.",
             key="compress_disk_mode",
         )
 
     with st.form("compress_form"):
         output_name = sanitize_output_stem(
-            st.text_input("Nombre del fichero de salida (sin extensión)", value=os.path.splitext(uploaded.name)[0]),
+            st.text_input("Output file name (without extension)", value=os.path.splitext(uploaded.name)[0]),
             fallback="graph",
         )
-        submitted = st.form_submit_button("Comprimir", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Compress", type="primary", use_container_width=True)
 
     if submitted:
         _run_compression(uploaded, index, disk_mode, output_name, size_mb)
@@ -74,7 +74,7 @@ def _run_compression(uploaded, index, disk_mode, output_name, original_size_mb):
     input_path = save_upload(uploaded, suffix=os.path.splitext(uploaded.name)[1])
     output_path = temp_path(f"{output_name}_{index}.cottas")
 
-    with st.spinner("Comprimiendo…"):
+    with st.spinner("Compressing..."):
         t0 = time.perf_counter()
         try:
             compress_rdf(input_path=input_path, output_path=output_path, index=index, disk=disk_mode)
@@ -88,29 +88,30 @@ def _run_compression(uploaded, index, disk_mode, output_name, original_size_mb):
     acr = (output_size_mb / original_size_mb) * 100 if original_size_mb else 0
     filename = f"{output_name}_{index}.cottas"
 
-    st.success(f"Compresión completada en {elapsed:.1f} s.")
+    st.success(f"Compression completed in {elapsed:.1f} s.")
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Tamaño original", f"{original_size_mb:.2f} MB")
-    c2.metric("Tamaño COTTAS", f"{output_size_mb:.2f} MB")
+    c1.metric("Original size", f"{original_size_mb:.2f} MB")
+    c2.metric("COTTAS size", f"{output_size_mb:.2f} MB")
     c3.metric("Ratio", f"{acr:.1f}%")
-    c4.metric("Tripletas", f"{meta['num_triples']:,}" if meta.get("num_triples") else "N/D")
+    num_triples = meta.get("num_triples")
+    c4.metric("Triples", f"{num_triples:,}" if num_triples is not None else "N/A")
 
     c5, c6, c7 = st.columns(3)
-    c5.metric("Propiedades distintas", f"{meta['num_properties']:,}" if meta.get("num_properties") else "N/D")
-    c6.metric("Índice", meta.get("index", index))
-    c7.metric("Tipo", "Quad table" if meta.get("is_quad_table") else "Triple table")
+    c5.metric("Distinct properties", f"{meta['num_properties']:,}" if meta.get("num_properties") is not None else "N/A")
+    c6.metric("Index", meta.get("index", index))
+    c7.metric("Type", "Quad table" if meta.get("is_quad_table") else "Triple table")
 
     st.session_state["active_cottas"] = output_path
     st.session_state["active_name"] = filename
 
     ts = datetime.datetime.now().strftime("%H:%M:%S")
     st.session_state["history"].append(
-        f"[{ts}] Compresión · `{uploaded.name}` → `{filename}` (índice {index}, disco={disk_mode}, {elapsed:.1f}s)"
+        f"[{ts}] Compression · `{uploaded.name}` → `{filename}` (index {index}, disk={disk_mode}, {elapsed:.1f}s)"
     )
 
     st.download_button(
-        label="Descargar fichero COTTAS",
+        label="Download COTTAS file",
         data=read_bytes(output_path),
         file_name=filename,
         mime="application/octet-stream",
